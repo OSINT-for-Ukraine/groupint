@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "aggregator"
+version = "0.1.0"
+description = ""
+authors = ["Leonid Sliusar <loslyusar@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+telethon = "^1.28.5"
+snscrape = "^0.7.0.20230622"
+pydantic = "^2.0.2"
+neo4j = "^5.10.0"
+networkx = "^3.1"
+matplotlib = "^3.7.2"
+py2neo = "^2021.2.3"
+pydantic-settings = "^2.0.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
