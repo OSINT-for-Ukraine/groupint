@@ -1,0 +1,14 @@
+https://neo4j.com/docs/
+Дока по СУБД
+
+https://py2neo.org/v4/database.html
+Дока для либы. Часть методов устарели.
+Например CREATE [INDEX] ON осталось в либе, в самой СУБД уже CREATE FOR.
+Но можно посмотреть по ссылке в каких форматах она позволяет выводить данные.
+
+https://quickref.me/neo4j.html
+Шпаргалка по запросам
+
+https://graphaware.com/blog/neo4j/neo4j-bidirectional-relationships.html#:~:text=Relationships%20in%20Neo4j%20can%20be,if%20one%20implies%20the%20other.
+Короткая статья с объяснением почему не нужны двунаправленные связи в neo4j
+
