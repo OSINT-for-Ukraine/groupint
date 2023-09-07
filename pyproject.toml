@@ -15,6 +15,14 @@ networkx = "^3.1"
 matplotlib = "^3.7.2"
 py2neo = "^2021.2.3"
 pydantic-settings = "^2.0.1"
+gephistreamer = "^2.0.3"
+streamlit = "^1.25.0"
+plotly = "^5.15.0"
+dash-cytoscape = "0.2.0"
+streamlit-ace = "^0.1.1"
+streamlit-cytoscapejs = "^0.0.2"
+pyvis = "^0.3.2"
+redis = "^4.6.0"
 
 
 [build-system]

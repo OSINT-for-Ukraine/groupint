@@ -1,7 +1,7 @@
 query_dict = {
     '*N':
         """
-        MATCH (n) RETURN n LIMIT $N
+        MATCH (n:User) RETURN n LIMIT $N
         """,
 
     #  problem here the same group update groups_count for user

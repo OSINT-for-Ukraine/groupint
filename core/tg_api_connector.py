@@ -15,8 +15,8 @@ from models import FetchedChannel, FetchedUser, FetchedUserFromGroup
 API_ID = 23128967
 API_HASH = '1768893f3990862c7ec4571227f32743'
 BOT_TOKEN = '6342844716:AAFLHrm6JivKEe9bbq4qpyyKTJBMdV_epPs'
-PHONE = '79533413730'
-session_path = os.path.join(os.getcwd(), 'telethon.session')
+PHONE = '79881396592'
+session_path = os.path.join(os.getcwd(), f'{PHONE}.session')
 
 
 class ChannelParser:
@@ -160,12 +160,3 @@ async def entry(channel: Union[str, int]) -> FetchedChannel:
     await parser.join_channel(channel)
     channel_instance = await parser.get_all_participants(channel)
     return channel_instance
-
-
-if __name__ == '__main__':
-    time_start = datetime.datetime.now()
-    *channel, members = asyncio.run(entry('fastapiru'))
-    time_end = datetime.datetime.now()
-    print(channel)
-    print(members)
-    print(f'Execution: {time_end - time_start} s')

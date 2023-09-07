@@ -29,7 +29,7 @@ class GraphManager:
     @staticmethod
     def fetch_data(query_key: str, n: int = None, out_type: str = 'map') -> Union[Table, dict, Type['DataFrame']]:
         query = query_dict.get(query_key)
-        raw_result = graph.run(query)
+        raw_result = graph.run(query, parameters={'N': n})
         match out_type:
             case 'table':
                 result = raw_result.to_table()  # вывод таблицы <class 'py2neo.integration.Table'>
@@ -39,19 +39,4 @@ class GraphManager:
                 result = raw_result.data()  # вывод в dict
             case _:
                 raise AttributeError('Here is no such type of output data')
-        print(result)
         return result
-
-
-
-
-# instance_1 = FetchedChannel(id=3, title='Social', user_counts=2,
-#                             user_set=[(1, 'user_1', 'Jack'), (4, 'user_5', 'Jasper'), (3, 'user_3', 'Jenny')])
-
-# instance_2 = FetchedChannel(id=2, title='Art', user_counts=3,
-#                             user_set=[(1, 'user_1', 'Jack'), (2, 'user_2', 'John'), (3, 'user_3', 'Jenny')])
-# instance_3 = FetchedChannel(id=1, title='Humor', user_counts=4,
-#                             user_set=[(1, 'user_1', 'Jack'), (5, 'user_4', 'Alex'), (3, 'user_3', 'Jenny'), (6, 'user_6', 'Anna')])
-# instance_4 = FetchedChannel(id=1, title='Humor', user_counts=5, user_set=[(2, 'user_2', 'John')])
-
-# GraphManager.add_fetched_channel(instance_4)
