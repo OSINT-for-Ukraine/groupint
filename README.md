@@ -151,3 +151,56 @@ web интерфейс субд здесь авторизация с теми ж
 
     asyncio.run(DataManager.get_data(<commad: str>, <n: int>, <out_type: str>))
 
+------
+TIPs on how to make the project running 
+
+I'm running all this in the WSL2 Ubuntu 22
+
+Prerequisites
+1. [[Docker composer]] -> to run neo4j database
+2. python3.11 -> required by the project
+3. python3.11 virtual env -> to have a clean environment
+4. poetry -> to install python deps
+
+launch docker composer in order to launch the neo4j
+```
+git clone https://gitlab.com/osint-for-ukraine/telesint-bot.git
+cd telesint-bot
+sudo docker compose up -d
+sudo docker compose ps
+hostname -I # to access UI
+and then in the browser host:7474
+```
+
+1.  [x] you have access to neo4j from the browser
+    1. neo4j is running services simulatenously on multiple ports 
+    one seems to be hosting database and another one the ui for neo4j 
+
+```
+sudo apt-get install python3.11
+```
+
+2.  [x] pyhon3.11 
+
+```
+sudo apt-get install python3.11-venv
+python3.11 -m venv venv
+. venv/bin/activate
+```
+
+3.  [x] venv created and activated
+
+```
+# instal poetry
+curl -sSL https://install.python-poetry.org | python3 -
+```
+
+4.  [x] poetry installed
+now we need to install the deps for the python wheel, which is described by [[pyproject.toml]]
+
+```
+python3.11 -m pip install . //Note there was an error in pyproject.toml, the folder is called core not aggregator
+```
+
+
+[x] project ready to be executed
