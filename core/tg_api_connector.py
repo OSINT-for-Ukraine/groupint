@@ -12,11 +12,7 @@ from telethon.tl.functions.messages import GetRepliesRequest
 from telethon.tl.types import User, Channel, Chat, PeerUser
 from models import FetchedChannel, FetchedUser, FetchedUserFromGroup
 
-API_ID = 23128967
-API_HASH = '1768893f3990862c7ec4571227f32743'
-BOT_TOKEN = '6342844716:AAFLHrm6JivKEe9bbq4qpyyKTJBMdV_epPs'
-PHONE = '79881396592'
-session_path = os.path.join(os.getcwd(), f'{PHONE}.session')
+
 
 
 class ChannelParser:
@@ -153,10 +149,3 @@ class ChannelParser:
         return users_messages_set
 
 
-async def entry(channel: Union[str, int]) -> FetchedChannel:
-    parser = ChannelParser(API_ID, API_HASH, PHONE, BOT_TOKEN)
-    parser.client = session_path
-    await parser.start()
-    await parser.join_channel(channel)
-    channel_instance = await parser.get_all_participants(channel)
-    return channel_instance
