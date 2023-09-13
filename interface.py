@@ -82,10 +82,10 @@ if button_request_code and phone_number_input and api_id_input and api_hash_inpu
     st.session_state.api_id = api_id_input
     st.session_state.api_hash = api_hash_input
 
-    secret_code_input = st.text_input(label='Secret code', help='Input your secret code')
-    st.session_state.secret_code = secret_code_input
-
+secret_code_input = st.text_input(label='Secret code', help='Input your secret code')
+st.session_state.secret_code = secret_code_input
 button_verify_code = st.button(label='Verify secret code')
+
 if button_verify_code and st.session_state.secret_code:
     verify_otp(st.session_state.client,
                st.session_state.phone,
