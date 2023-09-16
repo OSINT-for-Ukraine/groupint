@@ -16,6 +16,8 @@ from draw_graph.dynamic_plot import get_graph, create_paginated_graph
 # SLIDE BAR
 with st.sidebar.expander('Query hint'):
     st.markdown(query_hint)
+
+
 def get_or_create_eventloop():
     try:
         return asyncio.get_event_loop()
@@ -24,6 +26,7 @@ def get_or_create_eventloop():
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             return asyncio.get_event_loop()
+
 
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
