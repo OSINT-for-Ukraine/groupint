@@ -1,7 +1,4 @@
-import asyncio
-import datetime
-import os.path
-from typing import Union, Optional, AsyncGenerator
+from typing import Union, AsyncGenerator
 from telethon.errors import ChannelInvalidError, ChannelPrivateError, InputConstructorInvalidError, \
     ChatAdminRequiredError, MsgIdInvalidError
 from telethon.sync import TelegramClient
@@ -12,32 +9,12 @@ from telethon.tl.functions.messages import GetRepliesRequest
 from telethon.tl.types import User, Channel, Chat, PeerUser
 from models import FetchedChannel, FetchedUser, FetchedUserFromGroup
 
-API_ID = 23128967
-API_HASH = '1768893f3990862c7ec4571227f32743'
-BOT_TOKEN = '6342844716:AAFLHrm6JivKEe9bbq4qpyyKTJBMdV_epPs'
-PHONE = '79881396592'
-session_path = os.path.join(os.getcwd(), f'{PHONE}.session')
+
 
 
 class ChannelParser:
-
-    def __init__(self, api_id: int, api_hash: str, phone: str, bot_token: Optional[str] = None):
-        self._api_id = api_id
-        self._api_hash = api_hash
-        self._phone = phone
-        self._bot_token = bot_token
-        self._client = None
-
-    @property
-    def client(self) -> TelegramClient:
-        return self._client
-
-    @client.setter
-    def client(self, client_name: str):
-        if self._client is None:
-            self._client = TelegramClient(client_name, self._api_id, self._api_hash)
-        else:
-            print("Client is already set")
+    def __init__(self, client: TelegramClient):
+        self.client = client
 
     async def start(self) -> None:
         await self.client.start()
@@ -153,10 +130,3 @@ class ChannelParser:
         return users_messages_set
 
 
-async def entry(channel: Union[str, int]) -> FetchedChannel:
-    parser = ChannelParser(API_ID, API_HASH, PHONE, BOT_TOKEN)
-    parser.client = session_path
-    await parser.start()
-    await parser.join_channel(channel)
-    channel_instance = await parser.get_all_participants(channel)
-    return channel_instance
