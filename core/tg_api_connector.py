@@ -35,8 +35,8 @@ class ChannelParser:
         else:
             print("Client is already set")
 
-    async def start(self) -> None:
-        await self.client.start()
+    # async def start(self) -> None:
+    #     await self.client.start()
 
     async def about_me(self) -> User:
         return await self.client.get_me()
