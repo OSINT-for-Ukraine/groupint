@@ -1,7 +1,4 @@
-import asyncio
-import datetime
-import os.path
-from typing import Union, Optional, AsyncGenerator
+from typing import Union, AsyncGenerator
 from telethon.errors import ChannelInvalidError, ChannelPrivateError, InputConstructorInvalidError, \
     ChatAdminRequiredError, MsgIdInvalidError
 from telethon.sync import TelegramClient
@@ -16,27 +13,11 @@ from models import FetchedChannel, FetchedUser, FetchedUserFromGroup
 
 
 class ChannelParser:
+    def __init__(self, client: TelegramClient):
+        self.client = client
 
-    def __init__(self, api_id: int, api_hash: str, phone: str, bot_token: Optional[str] = None):
-        self._api_id = api_id
-        self._api_hash = api_hash
-        self._phone = phone
-        self._bot_token = bot_token
-        self._client = None
-
-    @property
-    def client(self) -> TelegramClient:
-        return self._client
-
-    @client.setter
-    def client(self, client_name: str):
-        if self._client is None:
-            self._client = TelegramClient(client_name, self._api_id, self._api_hash)
-        else:
-            print("Client is already set")
-
-    # async def start(self) -> None:
-    #     await self.client.start()
+    async def start(self) -> None:
+        await self.client.start()
 
     async def about_me(self) -> User:
         return await self.client.get_me()
