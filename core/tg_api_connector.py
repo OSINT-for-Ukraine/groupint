@@ -1,7 +1,6 @@
 from typing import Union, AsyncGenerator
 from telethon.errors import ChannelInvalidError, ChannelPrivateError, InputConstructorInvalidError, \
     ChatAdminRequiredError, MsgIdInvalidError
-from telethon.sync import TelegramClient
 from telethon.tl.functions.account import UpdateProfileRequest
 from telethon.tl.functions.channels import LeaveChannelRequest
 from telethon.tl.functions.channels import JoinChannelRequest
@@ -9,7 +8,128 @@ from telethon.tl.functions.messages import GetRepliesRequest
 from telethon.tl.types import User, Channel, Chat, PeerUser
 from models import FetchedChannel, FetchedUser, FetchedUserFromGroup
 
+from telethon import TelegramClient
+from telethon.tl.functions.contacts import ResolveUsernameRequest
 
+import re
+
+
+async def is_user_authorized(client):
+    return await client.is_user_authorized()
+
+
+async def create_client(phone_number, API_ID, API_HASH):
+    client_tg = TelegramClient(phone_number, API_ID, API_HASH)
+    await client_tg.connect()
+    return client_tg
+
+
+async def generate_otp(client_tg, phone_number):
+    result = await client_tg.send_code_request(
+        phone=phone_number
+    )
+    phone_hash = result.phone_code_hash
+    return client_tg, phone_hash
+
+
+async def verify_otp(client, phone, secret_code, phone_hash):
+    await client.connect()
+    await client.sign_in(
+        phone=phone,
+        code=secret_code,
+        phone_code_hash=phone_hash,
+    )
+
+
+async def send_message(client, message, user="me"):
+    await client.send_message(entity=user, message=message)
+
+
+async def get_messages(client, user="me"):
+    output=""
+    async for message in client.iter_messages(entity=user):
+        output += f"""{message.id}\n{message.text}\n"""
+        if message.buttons:
+            output += f"""{[button[0].text for button in message.buttons]}"""
+    return output
+
+
+async def get_all_participants(client, channel):
+    channel = await client(ResolveUsernameRequest(channel))
+    users = []
+    async for _user in client.iter_participants(entity=channel):
+        users.append((_user.id,_user.username))
+    return users
+    # if entity.broadcast:
+    #     print('Chanel')
+    #     users_messages_set = await self.get_comments_from_channel(entity)  # here is data with messages !!!
+    #     user_set = {(user.user_id, user.user_name, user.first_name) for user in users_messages_set}
+    #     user_array = list(user_set)
+    #     return user_array
+    
+
+async def get_groups_of_which_user_is_part_of(client, user, dry_run=True):
+    """
+    interacts with telesint bot to query it for the groups, "user" is part of
+    client - telethon client
+    dry_run - only reads the message sent by telesint bot(good for testing)
+
+    """
+    failed_result = []
+    if not dry_run:
+        await client.send_message(entity="telesint_bot", message=user)
+    # example of an answer from the bot, specifically the message ends with
+    # search button, because the user is in db, otherwise here the result will
+    # be that the user is not found and the function returns with empty list
+    #  👨‍💼️️ Тип: пользователь
+
+    # 🆔 ID пользователя: 457528096
+
+    # 🔗 Ссылка: https://t.me/total_ordering
+
+    # 👤 Имя: Yegor 𓃰
+
+    # 🗃 Наличие в базе: ✅
+
+    # 🔍 Осталось запросов: 3
+    # ['🔍 Искать'] 
+
+
+    # if the user is in the database we need to click the button "Искать" (search)
+    if not dry_run:
+        async for message in client.iter_messages(entity="telesint_bot", limit=1):
+            if message.buttons:
+                await message.click(0)
+            else:
+                print("object not in the bot's db")
+                return failed_result
+
+    # now we want to read the output and extract the channels
+    # pattern used to extract the block of text containing groups names
+    answer_to_parse = ""
+    async for message in client.iter_messages(entity="telesint_bot", limit=1):
+        answer_to_parse = message.text
+    pattern_groups_text_block = r"(.|\n)*Открытые группы \[.*?\]:\n((.*\n?)*)" 
+    match_obj = re.match(pattern_groups_text_block, answer_to_parse)
+    text_block = ""
+    if match_obj:
+        text_block = match_obj.group(2)
+    else:
+        print("pattern not found in the message")
+        return failed_result
+
+    # example output after extraction of group 1 from regex
+    # "@ru_python Python
+    # @devops_ru DevOps — русскоговорящее сообщество
+    # @procxx pro.cxx
+    # ...
+    # @groupname <free text>"
+
+    pattern_extract_group_names_text = r"@(.*?)\s.*"
+    if re.match(pattern_extract_group_names_text, text_block):
+        group_names_text = re.sub(pattern_extract_group_names_text, r"\g<1>", match_obj.group(2))
+
+    return group_names_text.split("\n")
 
 
 class ChannelParser:
