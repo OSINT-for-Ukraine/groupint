@@ -190,9 +190,9 @@ class ChannelParser:
                 InputConstructorInvalidError, TimeoutError) as e:
             print(str(e))
 
-    async def get_chunked_participants(self, channel: Union[str, int], limit: int = 5000,  # CONFIG
+    async def get_chunked_participants(self, channel: Union[str, int],  # CONFIG
                                        key_word: str = '') -> AsyncGenerator:
-        participants = self.client.iter_participants(entity=channel, limit=limit, search=key_word)
+        participants = self.client.iter_participants(entity=channel, search=key_word)
         yield participants
 
     async def get_comments_from_chat(self, chat_entity: Chat) -> list[FetchedUserFromGroup]:
