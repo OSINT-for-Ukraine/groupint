@@ -9,6 +9,10 @@ from db.queries import query_dict
 class GraphManager:
 
     @staticmethod
+    def add_groups_to_user(instance: FetchedChannel) -> None:
+        pass
+
+    @staticmethod
     def add_fetched_channel(instance: FetchedChannel) -> None:
         group_map = instance.model_dump()
         user_set = group_map.pop('user_set')

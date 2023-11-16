@@ -17,6 +17,14 @@ query_dict = {
         SET user.group = coalesce(user.group, []) + [$group_id] // add list of groups as a property not only as a relation, easier to parse
         MERGE (user)-[:MEMBER_OF]->(group)
         """,
+    
+    'add_groups_to_user':
+        """
+        MATCH (user:User)
+        WHERE user.id = $user_id
+        UNWIND $groups AS group_id
+        SET user.group = coalesce(user.group, []) + [group_id]
+        """
 
     'create_relationship_between_users_of_same_groups'
         """
@@ -28,7 +36,8 @@ query_dict = {
         where size(gr)>0 and n1<>n2 // at least 1 shared groups is required to form a relation
         MERGE (n1)-[c:RELATED]-(n2)
         SET c.group=gr, c.strength=size(gr)
-        return n1,n2"""
+        return n1,n2
+        """,
 
     'intersection_more_than_N':  # retrieve the users with more than N intersection in the same groups
         """

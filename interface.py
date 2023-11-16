@@ -85,14 +85,22 @@ if hasattr(st.session_state, 'auth'):
 if group_id and button_clicked_load:
     # TODO here we should store the info we retrieved from telesint bot
     # to a neo4j db
-    #  
+    #     run_until_complete(
+    #    DataManager.load_data(client=st.session_state.client, channel=group_id)) 
     users = run_until_complete(
         get_all_participants(st.session_state.client,group_id))
         # participants = self.client.iter_participants(entity=channel, limit=limit, search=key_word)
         # DataManager.get_users(client=st.session_state.client, channel=group_id))
-    
+    st.write("**Users were extracted from the group. Now we need will query the telesint db for info about other groups they're part of**")
 
     st.write(users)
+
+    button_clicked_query = st.button(label='Continue')
+    if button_clicked_query:
+        # run_until_complete(
+#            DataManager.get_data()
+ #       )
+        st.write("**Groups were found. Now based on them we will create relations between users.**")
     # st.write('**The data was loaded! Choose your params and click "show graph"**')
     # groups = run_until_complete(get_groups_of_which_user_is_part_of(st.session_state.client, user_id, dry_run=True))
     # st.write(groups)
