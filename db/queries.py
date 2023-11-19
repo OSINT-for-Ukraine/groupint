@@ -17,16 +17,25 @@ query_dict = {
         SET user.group = coalesce(user.group, []) + [$group_id] // add list of groups as a property not only as a relation, easier to parse
         MERGE (user)-[:MEMBER_OF]->(group)
         """,
-    
+
+    'add_user':
+        """
+        MERGE (user:User {id: $user_id})
+        SET user.username = $username
+        WITH user
+        UNWIND $groups AS group_id
+        SET user.group = coalesce(user.group, []) + [group_id]
+        """,
+
     'add_groups_to_user':
         """
         MATCH (user:User)
         WHERE user.id = $user_id
         UNWIND $groups AS group_id
         SET user.group = coalesce(user.group, []) + [group_id]
-        """
+        """,
 
-    'create_relationship_between_users_of_same_groups'
+    'create_relationship_between_users_of_same_groups':
         """
         MATCH (n1:User)
         Where size(n1.group)>1 // get rid of trivial relations when user is only part of one group

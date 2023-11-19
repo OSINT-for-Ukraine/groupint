@@ -24,6 +24,14 @@ class DataManager:
         fetched_channel = await entry(client, channel)
         GraphManager.add_fetched_channel(fetched_channel)
 
+    @staticmethod 
+    async def add_user(user: tuple, groups:list) -> None:
+        GraphManager.add_user(user, groups)
+
+    @staticmethod
+    async def create_relationships() -> None:
+        GraphManager.create_relationships()
+
     @staticmethod
     async def get_data(query: str, n: Optional[int] = None) -> Union[Table, dict, Type['DataFrame']]:
         return GraphManager.fetch_data(query, n)

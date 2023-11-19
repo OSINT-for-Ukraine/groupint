@@ -1,3 +1,4 @@
+import asyncio
 from typing import Union, AsyncGenerator
 from telethon.errors import ChannelInvalidError, ChannelPrivateError, InputConstructorInvalidError, \
     ChatAdminRequiredError, MsgIdInvalidError
@@ -78,6 +79,7 @@ async def get_groups_of_which_user_is_part_of(client, user, dry_run=True):
     failed_result = []
     if not dry_run:
         await client.send_message(entity="telesint_bot", message=user)
+        await asyncio.sleep(5)
     # example of an answer from the bot, specifically the message ends with
     # search button, because the user is in db, otherwise here the result will
     # be that the user is not found and the function returns with empty list
@@ -96,10 +98,12 @@ async def get_groups_of_which_user_is_part_of(client, user, dry_run=True):
 
 
     # if the user is in the database we need to click the button "Искать" (search)
+    
     if not dry_run:
         async for message in client.iter_messages(entity="telesint_bot", limit=1):
             if message.buttons:
                 await message.click(0)
+                await asyncio.sleep(5)
             else:
                 print("object not in the bot's db")
                 return failed_result
