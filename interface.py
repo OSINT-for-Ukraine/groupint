@@ -4,12 +4,16 @@ import webbrowser
 from socket import socket, SOCK_STREAM, AF_INET
 import requests
 import streamlit as st
-from telethon import TelegramClient
-
+from core.tg_api_connector import create_client, generate_otp, get_all_participants, get_groups_of_which_user_is_part_of, is_user_authorized, verify_otp
 from draw_graph.plot import draw_graph
 from main import DataManager
 from streamlit_utils.text import query_hint
 from draw_graph.dynamic_plot import get_graph
+
+
+def run_until_complete(coro):
+    return st.session_state.event_loop.run_until_complete(coro)
+
 
 # SLIDE BAR
 with st.sidebar.expander('Query hint'):
@@ -24,36 +28,8 @@ except AttributeError:
 st.write('**Load data into storage**')
 
 
-async def is_user_authorized(client):
-    return await client.is_user_authorized()
-
-
-async def create_client(phone_number, API_ID, API_HASH):
-    client_tg = TelegramClient(phone_number, API_ID, API_HASH)
-    await client_tg.connect()
-    return client_tg
-
-
-async def generate_otp(client_tg, phone_number):
-    result = await client_tg.send_code_request(
-        phone=phone_number
-    )
-    phone_hash = result.phone_code_hash
-    return client_tg, phone_hash
-
-
-def run_until_complete(coro):
-    return st.session_state.event_loop.run_until_complete(coro)
-
-
-async def verify_otp(client, phone, secret_code, phone_hash):
-    await client.connect()
-    await client.sign_in(
-        phone=phone,
-        code=secret_code,
-        phone_code_hash=phone_hash,
-    )
-
+# result = await get_groups_of_which_user_is_part_of(client_tg, "total_ordering", True)
+# print(result)
 
 phone_number_input = st.text_input(label='Phone numer', help='Input your phone number')
 api_id_input = st.text_input(label='Api id', help='Input your api id')
@@ -101,24 +77,65 @@ if hasattr(st.session_state, 'auth'):
         st.session_state.auth = True
 group_id = None
 button_clicked_load = None
+model_for_user_groups_exist = None
+button_clicked_query = None
+button_clicked_relationship = None
+users=[]
 if hasattr(st.session_state, 'auth'):
     if st.session_state.auth:
         group_id = st.text_input(label='Input target group', help='id or group name')
-        button_clicked_load = st.button(label='Parse group')
+        button_clicked_load = st.button(label='Get the user from the group')
 if group_id and button_clicked_load:
-    run_until_complete(
-        DataManager.load_data(client=st.session_state.client, channel=group_id))
-    st.write('**The data was loaded! Choose your params and click "show graph"**')
-# FETCH DATA WINDOW
-st.divider()
-st.write('**Fetch graph from storage**')
-col1, col2 = st.columns(2)
-with col1:
-    query_filter = st.text_input(label='Input filter to create graph', help='You could find hint in the sidebar')
-with col2:
-    arg = st.text_input(label='Input integer argument if necessary')
+    # TODO here we should store the info we retrieved from telesint bot
+    # to a neo4j db
+    #     run_until_complete(
+    #    DataManager.load_data(client=st.session_state.client, channel=group_id)) 
+    users = run_until_complete(
+        get_all_participants(st.session_state.client,group_id))
+        # participants = self.client.iter_participants(entity=channel, limit=limit, search=key_word)
+        # DataManager.get_users(client=st.session_state.client, channel=group_id))
+    st.write("**Users were extracted from the group. Now we need will query the telesint db for info about other groups they're part of**")    
 
-button_clicked_fetch = st.button(label='Show graph')
+    st.session_state.users=users
+    # st.write(st.session_state.users)
+
+button_clicked_query = st.button(label='Query for the groups that users are part of')
+
+if button_clicked_query:
+    # run_until_complete(
+#            DataManager.get_data()
+#       )
+    for user in st.session_state.users[:5]:
+        groups = run_until_complete(
+             get_groups_of_which_user_is_part_of(st.session_state.client,str(user[0]),dry_run=False)
+        )
+        st.write("adding user")
+        run_until_complete(
+            DataManager.add_user(user,groups)
+        )
+    st.write("**Groups were found. Now based on them we will create relations between users.**")
+
+button_clicked_relationship = st.button(label='Create relationships')
+
+if button_clicked_relationship:
+        run_until_complete(
+            DataManager.create_relationships()
+        )
+    # st.write('**The data was loaded! Choose your params and click "show graph"**')
+    # groups = run_until_complete(get_groups_of_which_user_is_part_of(st.session_state.client, user_id, dry_run=True))
+    # st.write(groups)
+    # st.write("implement the model for the user who're related by groups which theý're part of")
+# FETCH DATA WINDOW
+
+# st.divider()
+# st.write('**Fetch graph from storage**')
+# col1, col2 = st.columns(2)
+# with col1:
+#     query_filter = st.text_input(label='Input filter to create graph', help='You could find hint in the sidebar')
+# with col2:
+#     arg = st.text_input(label='Input integer argument if necessary')
+
+# button_clicked_fetch = st.button(label='Show graph')
 
 
 def show_static(fig):
@@ -147,17 +164,18 @@ def show_on_server(G):
     else:
         st.write(response.text)
 
-
-if button_clicked_fetch:
-    if arg:
-        group_data = run_until_complete(DataManager.get_data(query_filter, int(arg)))
-        fig, G = draw_graph(group_data, int(arg))
-    else:
-        group_data = run_until_complete(DataManager.get_data(query_filter))
-        fig, G = draw_graph(group_data)
-    st.button(label='Static', on_click=show_static, args=[fig])
-    interact_button = st.button(label='Interact', on_click=show_interact, args=[G])
-    server_button = st.button(label='On server', on_click=show_on_server, args=[G])
+# if button_clicked_fetch and not model_for_user_groups_exist:
+#     st.write("we are missing proper model to represent this data")
+# elif button_clicked_fetch and model_for_user_groups_exist:
+#     if arg:
+#         group_data = run_until_complete(DataManager.get_data(query_filter, int(arg)))
+#         fig, G = draw_graph(group_data, int(arg))
+#     else:
+#         group_data = run_until_complete(DataManager.get_data(query_filter))
+#         fig, G = draw_graph(group_data)
+#     st.button(label='Static', on_click=show_static, args=[fig])
+#     interact_button = st.button(label='Interact', on_click=show_interact, args=[G])
+#     server_button = st.button(label='On server', on_click=show_on_server, args=[G])
 
 
 # RUN SERVER WITH INTERACTIVE GRAPH

@@ -7,7 +7,7 @@ def get_graph(G):
     nt.show_buttons(filter_=['physics'])
     all_node_attributes = G.nodes.data()
     for node in all_node_attributes:
-        nt.add_node(n_id=node[0], label=str(node[0]), title=str(node[1]))
+        nt.add_node(n_id=node[0], label=str(node[1]["username"]), title="id:" + str(node[0]) + "," + str(node[1]))
     for edge in G.edges():
         nt.add_edge(edge[0], edge[1])
     graph_html = nt.generate_html()

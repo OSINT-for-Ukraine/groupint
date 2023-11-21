@@ -1,12 +1,26 @@
 from typing import Union, Type
 from py2neo.integration import Table
 from db.config import graph
-from models import FetchedChannel
+from models import FetchedChannel, FetchedUser
 from py2neo import Node
 from db.queries import query_dict
 
 
 class GraphManager:
+
+    @staticmethod
+    def add_user(user:tuple, groups:list) -> None:  
+        parameters = {
+            "user_id": user[0],
+            "username": user[1],
+            "groups": groups
+        }
+        print("adding users")
+        graph.run(query_dict.get('add_user'),parameters)
+
+    @staticmethod
+    def create_relationships() -> None:
+        graph.run(query_dict.get('create_relationship_between_users_of_same_groups'))
 
     @staticmethod
     def add_fetched_channel(instance: FetchedChannel) -> None:

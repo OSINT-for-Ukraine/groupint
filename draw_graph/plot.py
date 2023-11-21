@@ -45,11 +45,11 @@ def draw_graph(group_data, n=None):
     node_x = []
     node_y = []
     node_text = []
-    for node in G.nodes():
+    for node,properties in G.nodes.data():
         x, y = pos[node]
         node_x.append(x)
         node_y.append(y)
-        node_text.append(str(node))
+        node_text.append(str(properties["username"]) + "(" + str(node) + ")")
 
     node_trace = go.Scatter(
         x=node_x, y=node_y,
