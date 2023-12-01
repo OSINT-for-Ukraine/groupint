@@ -49,7 +49,13 @@ def draw_graph(group_data, n=None):
         x, y = pos[node]
         node_x.append(x)
         node_y.append(y)
-        node_text.append(str(properties["username"]) + "(" + str(node) + ")")
+        if "username" in properties:
+            label = str(properties["username"])
+        elif "id" in properties:
+            label = str(properties["id"])
+        else:
+            label = "Unknown"
+        node_text.append(label + "(" + str(node) + ")")
 
     node_trace = go.Scatter(
         x=node_x, y=node_y,

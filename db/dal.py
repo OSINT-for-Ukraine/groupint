@@ -9,14 +9,13 @@ from db.queries import query_dict
 class GraphManager:
 
     @staticmethod
-    def add_user(user:tuple, groups:list) -> None:  
+    def add_user(user: dict) -> None:
         parameters = {
-            "user_id": user[0],
-            "username": user[1],
-            "groups": groups
+            "user_id": user["id"],
+            "username": user["username"],
+            "groups": list(user["groups"].keys())
         }
-        print("adding users")
-        graph.run(query_dict.get('add_user'),parameters)
+        graph.run(query_dict.get('add_user'), parameters)
 
     @staticmethod
     def create_relationships() -> None:
