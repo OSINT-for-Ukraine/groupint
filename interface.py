@@ -4,7 +4,7 @@ import webbrowser
 from socket import socket, SOCK_STREAM, AF_INET
 import requests
 import streamlit as st
-from core.tg_api_connector import create_client, generate_otp, get_all_participants, get_groups_of_which_user_is_part_of, is_user_authorized, verify_otp
+from core.tg_api_connector import create_client, generate_otp, get_all_participants, get_groups_of_which_user_is_part_of, get_participants_based_on_messages, is_user_authorized, verify_otp
 from draw_graph.plot import draw_graph
 from main import DataManager
 from streamlit_utils.text import query_hint
@@ -80,6 +80,8 @@ button_clicked_load = None
 model_for_user_groups_exist = None
 button_clicked_query = None
 button_clicked_relationship = None
+button_clicked_from_messages = None
+n_of_messages_input = None
 users=[]
 if hasattr(st.session_state, 'auth'):
     if st.session_state.auth:
@@ -94,9 +96,22 @@ if group_id and button_clicked_load:
         get_all_participants(st.session_state.client,group_id))
         # participants = self.client.iter_participants(entity=channel, limit=limit, search=key_word)
         # DataManager.get_users(client=st.session_state.client, channel=group_id))
-    st.write("**Users were extracted from the group. Now we need will query the telesint db for info about other groups they're part of**")    
-
+    st.write(f"**{len(users)} Users were extracted from the group. If you expect more users we will try to extract them from the messages.**")
     st.session_state.users=users
+n_of_messages_input = st.text_input(label="How many messages should be parsed?",help="integer")
+button_clicked_from_messages = st.button(label='Extract users based on messages')
+
+
+if button_clicked_from_messages:
+        print("entered")
+        users_from_messages = run_until_complete(
+            get_participants_based_on_messages(st.session_state.client,group_id,int(n_of_messages_input))
+        )
+        st.write(f"{len(users_from_messages)} users extracted")
+        st.session_state.users=users + users_from_messages
+        st.write("**Now we need will query the telesint db for info about other groups they're part of**")  
+    
+    
     # st.write(st.session_state.users)
 
 button_clicked_query = st.button(label='Query for the groups that users are part of')
@@ -105,7 +120,7 @@ if button_clicked_query:
     # run_until_complete(
 #            DataManager.get_data()
 #       )
-    for user in st.session_state.users[:5]:
+    for user in st.session_state.users[:100]:
         groups = run_until_complete(
              get_groups_of_which_user_is_part_of(st.session_state.client,str(user[0]),dry_run=False)
         )
