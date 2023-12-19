@@ -6,7 +6,7 @@ from telethon.tl.functions.account import UpdateProfileRequest
 from telethon.tl.functions.channels import LeaveChannelRequest
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import GetRepliesRequest
-from telethon.tl.types import User, Channel, Chat, PeerUser
+from telethon.tl.types import User, Channel, Chat, PeerUser, PeerChannel
 from models import FetchedChannel, FetchedUser, FetchedUserFromGroup
 
 from telethon import TelegramClient
@@ -67,7 +67,22 @@ async def get_all_participants(client, channel):
     #     user_set = {(user.user_id, user.user_name, user.first_name) for user in users_messages_set}
     #     user_array = list(user_set)
     #     return user_array
-    
+
+async def get_participants_based_on_messages(client, channel, limit:int=10000):
+    entity = await client.get_entity(channel)
+    messages = await client.get_messages(entity,limit=limit)
+    print("got messages")
+    user_set = set()
+    for message in messages:
+        if type(message.from_id) is PeerUser:
+            user_set.add(message.from_id.user_id)
+        elif type(message.from_id) is PeerChannel:
+            user_set.add(message.from_id.channel_id)
+    user_list = []
+    for id in user_set:
+        user = await client.get_entity(id)
+        user_list.append((id,user.username))
+    return user_list
 
 async def get_groups_of_which_user_is_part_of(client, user, dry_run=True):
     """
@@ -103,7 +118,7 @@ async def get_groups_of_which_user_is_part_of(client, user, dry_run=True):
         async for message in client.iter_messages(entity="telesint_bot", limit=1):
             if message.buttons:
                 await message.click(0)
-                await asyncio.sleep(5)
+                await asyncio.sleep(10)
             else:
                 print("object not in the bot's db")
                 return failed_result
