@@ -112,6 +112,7 @@ button_clicked_relationship = None
 button_clicked_from_messages = None
 n_of_messages_input = None
 users=[]
+uploaded_file = None
 
 ## UI for loading data into storage
 if hasattr(st.session_state, 'auth'):
@@ -134,9 +135,9 @@ if hasattr(st.session_state, 'auth'):
         button_clicked_from_messages = st.button(label='Extract users based on messages')
 
         #Upload JSON file
+        uploaded_file = st.file_uploader("Upload file", accept_multiple_files=False, type=['json', 'xls', 'xlsx'])
 
-uploaded_file = st.file_uploader("Upload file", accept_multiple_files=False, type=['json', 'xls', 'xlsx'])
-
+        st.markdown("""<hr style="height:2px;border:none;color:#222;background-color:#222;" /> """, unsafe_allow_html=True)
 
 ### Get users from the group logic
 if group_id and button_clicked_load:
@@ -175,12 +176,11 @@ if uploaded_file is not None:
 
 
 
-st.markdown("""<hr style="height:2px;border:none;color:#222;background-color:#222;" /> """, unsafe_allow_html=True)
 
     # Query The Groups that users are part of and create relationships
 if hasattr(st.session_state, 'auth'):
     if st.session_state.auth:
-        st.write('**Query users and create relationships 🕵️**')
+        st.write('**Query users and create relationships 🕸️**')
         col1, col2 = st.columns(2)
         with col1:
             button_clicked_query = st.button(label='Query for the groups that users are part of')
