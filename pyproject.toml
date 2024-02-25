@@ -1,0 +1,32 @@
+[tool.poetry]
+name = "core"
+version = "0.1.0"
+description = ""
+authors = ["Leonid Sliusar <loslyusar@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+telethon = "^1.28.5"
+snscrape = "^0.7.0.20230622"
+pydantic = "^2.0.2"
+neo4j = "^5.10.0"
+networkx = "^3.1"
+matplotlib = "^3.7.2"
+py2neo = "^2021.2.3"
+pydantic-settings = "^2.0.1"
+gephistreamer = "^2.0.3"
+streamlit = "^1.25.0"
+plotly = "^5.15.0"
+dash-cytoscape = "0.2.0"
+streamlit-ace = "^0.1.1"
+streamlit-cytoscapejs = "^0.0.2"
+pyvis = "^0.3.2"
+redis = "^4.6.0"
+openpyxl = "^3.1.2"
+xlrd = "^2.0.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
