@@ -19,6 +19,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+env/
 
 # Installer logs
 pip-log.txt
@@ -34,10 +35,17 @@ coverage.xml
 # Translations
 *.mo
 
+# Downloaded files
+*.xls
+
 # Mr Developer
 .mr.developer.cfg
 .project
 .pydevproject
+
+# Details
+telethon_details.md
+
 
 # Rope
 .ropeproject
