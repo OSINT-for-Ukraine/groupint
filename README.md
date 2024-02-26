@@ -7,7 +7,6 @@ sudo APP_NAME=groupint NEO4J_USER=neo4j NEO4J_PASSWORD=difficulties-pushup-gaps 
 Запустить docker compose 
 
     $ docker compose up
-    
 
 Запустить streamlit
 
