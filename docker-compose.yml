@@ -8,17 +8,13 @@ services:
       - "7473:7473"
       - "7687:7687"
     volumes:
-      - $HOME/neo4j/${NEO4J_USER}/data:/data
-      - $HOME/neo4j/${NEO4J_USER}/logs:/logs
-      - $HOME/neo4j/${NEO4J_USER}/import:/var/lib/neo4j/import
-      - $HOME/neo4j/${NEO4J_USER}/plugins:/plugins
+      - $HOME/neo4j/neo4j/data:/data
+      - $HOME/neo4j/neo4j/logs:/logs
+      - $HOME/neo4j/neo4j/import:/var/lib/neo4j/import
+      - $HOME/neo4j/neo4j/plugins:/plugins
     environment:
-      - NEO4J_AUTH=${NEO4J_USER}/${NEO4J_PASSWORD}
-      - NEO4J_apoc_export_file_enabled=true
-      - NEO4J_apoc_import_file_enabled=true
-      - NEO4J_apoc_import_file_use__neo4j__config=true
-      - NEO4J_dbms_security_procedures_unrestricted=apoc.*,gds.*
-      - NEO4JLABS_PLUGINS='["apoc", "graph-data-science"]'
+      - NEO4J_AUTH=none
+      - NEO4J_dbms_security_procedures_unrestricted=gds.*
     restart: always
   streamlit:
     container_name: groupint-streamlit
@@ -28,8 +24,8 @@ services:
     environment:
       - HOST=localhost
       - NEO4J_URI=bolt://${APP_NAME}-neo4j:7687
-      - NEO4J_USERNAME=${NEO4J_USER}
-      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
+      - NEO4J_USERNAME=neo4j
+      - NEO4J_PASSWORD=difficulties-pushup-gaps
       - APP_NAME=${APP_NAME}
     restart: always
     ports:
