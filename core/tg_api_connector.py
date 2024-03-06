@@ -1,18 +1,23 @@
+import re
+import io
+import openpyxl
 import asyncio
 from typing import Union, AsyncGenerator
-from telethon.errors import ChannelInvalidError, ChannelPrivateError, InputConstructorInvalidError, \
-    ChatAdminRequiredError, MsgIdInvalidError
+from telethon.errors import (
+        ChannelInvalidError,
+        ChannelPrivateError, 
+        InputConstructorInvalidError, 
+        ChatAdminRequiredError,
+        MsgIdInvalidError
+        )
 from telethon.tl.functions.account import UpdateProfileRequest
 from telethon.tl.functions.channels import LeaveChannelRequest
 from telethon.tl.functions.channels import JoinChannelRequest
 from telethon.tl.functions.messages import GetRepliesRequest
 from telethon.tl.types import User, Channel, Chat, PeerUser, PeerChannel
 from models import FetchedChannel, FetchedUser, FetchedUserFromGroup
-
 from telethon import TelegramClient
 from telethon.tl.functions.contacts import ResolveUsernameRequest
-
-import re
 
 
 async def is_user_authorized(client):
@@ -61,12 +66,6 @@ async def get_all_participants(client, channel):
     async for _user in client.iter_participants(entity=channel):
         users.append((_user.id,_user.username))
     return users
-    # if entity.broadcast:
-    #     print('Chanel')
-    #     users_messages_set = await self.get_comments_from_channel(entity)  # here is data with messages !!!
-    #     user_set = {(user.user_id, user.user_name, user.first_name) for user in users_messages_set}
-    #     user_array = list(user_set)
-    #     return user_array
 
 async def get_participants_based_on_messages(client, channel, limit:int=10000):
     entity = await client.get_entity(channel)
@@ -83,6 +82,7 @@ async def get_participants_based_on_messages(client, channel, limit:int=10000):
         user = await client.get_entity(id)
         user_list.append((id,user.username))
     return user_list
+
 
 async def get_groups_of_which_user_is_part_of(client, user, dry_run=True):
     """
