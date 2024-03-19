@@ -7,7 +7,7 @@ RUN set -ex \
     # Create a non-root user
     && addgroup --system --gid 1001 appgroup \
     && adduser --system --uid 1001 --gid 1001 --no-create-home appuser \
-    python3.11 -m pip install .
+    && python3.11 -m pip install .
 
 EXPOSE 8501
 
