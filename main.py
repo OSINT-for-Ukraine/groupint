@@ -24,12 +24,12 @@ class DataManager:
         fetched_channel = await entry(client, channel)
         GraphManager.add_fetched_channel(fetched_channel)
 
-    # @staticmethod
-    # async def add_user(user: tuple, groups: list) -> None:
-    #     GraphManager.add_user(user, groups)
     @staticmethod
-    async def add_user(user: dict) -> None:
-        GraphManager.add_user(user)  # TODO return to previous params
+    async def add_user(user: tuple, groups: list) -> None:
+        GraphManager.add_user(user, groups)
+   # @staticmethod
+    #async def add_user(user: tuple) -> None:
+    #    GraphManager.add_user(user)  # TODO return to previous params
 
     @staticmethod
     async def create_relationships() -> None:
