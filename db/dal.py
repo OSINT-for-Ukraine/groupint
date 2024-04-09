@@ -9,11 +9,11 @@ from db.queries import query_dict
 class GraphManager:
 
     @staticmethod
-    def add_user(user: dict) -> None:
+    def add_user(user: tuple, groups: list) -> None:
         parameters = {
-            "user_id": user["id"],
-            "username": user["username"],
-            "groups": list(user["groups"].keys())
+            "user_id": user[0],
+            "username": user[1],
+            "groups": groups
         }
         graph.run(query_dict.get('add_user'), parameters)
 
