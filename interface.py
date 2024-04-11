@@ -23,14 +23,9 @@ from draw_graph.dynamic_plot import get_graph
 import pandas as pd
 from io import StringIO 
 import hmac
-
-
-#------Check user is authenticated------'''
 from core.login import check_password, run_until_complete
 
-check_password()
-
-
+#------Check user is authenticated------'''
 if not check_password():
     st.stop()  # Do not continue if check_password is not True.
 
@@ -44,10 +39,7 @@ except AttributeError:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     st.session_state.event_loop = loop
-
 #####  LOAD USER DETAILS  🛰️
-
-
 st.write('****Confirm your details to connect to Telegram scraper**** 🛰️ ')
 phone_number_input = st.text_input(label='Phone numer', help='Input your phone number')
 api_id_input = st.text_input(label='Api id', help='Input your api id')
@@ -198,7 +190,7 @@ if button_clicked_query:
         )
         st.write("adding user")
         run_until_complete(
-            DataManager.add_user(user,groups)
+            DataManager.add_user(user, groups)
         )
     st.write("**Groups were found. Now based on them we will create relations between users.**")
 
