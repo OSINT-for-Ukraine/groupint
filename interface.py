@@ -206,15 +206,15 @@ if button_clicked_relationship:
     # st.write("implement the model for the user who're related by groups which theý're part of")
 # FETCH DATA WINDOW
 
-# st.divider()
-# st.write('**Fetch graph from storage**')
-# col1, col2 = st.columns(2)
-# with col1:
-#     query_filter = st.text_input(label='Input filter to create graph', help='You could find hint in the sidebar')
-# with col2:
-#     arg = st.text_input(label='Input integer argument if necessary')
+st.divider()
+st.write('**Fetch graph from storage**')
+col1, col2 = st.columns(2)
+with col1:
+    query_filter = st.text_input(label='Input filter to create graph', help='You could find hint in the sidebar')
+with col2:
+    arg = st.text_input(label='Input integer argument if necessary')
 
-# button_clicked_fetch = st.button(label='Show graph')
+button_clicked_fetch = st.button(label='Show graph')
 
 
 
@@ -245,18 +245,18 @@ def show_on_server(G):
     else:
         st.write(response.text)
 
-# if button_clicked_fetch and not model_for_user_groups_exist:
-#     st.write("we are missing proper model to represent this data")
-# elif button_clicked_fetch and model_for_user_groups_exist:
-#     if arg:
-#         group_data = run_until_complete(DataManager.get_data(query_filter, int(arg)))
-#         fig, G = draw_graph(group_data, int(arg))
-#     else:
-#         group_data = run_until_complete(DataManager.get_data(query_filter))
-#         fig, G = draw_graph(group_data)
-#     st.button(label='Static', on_click=show_static, args=[fig])
-#     interact_button = st.button(label='Interact', on_click=show_interact, args=[G])
-#     server_button = st.button(label='On server', on_click=show_on_server, args=[G])
+if button_clicked_fetch and not model_for_user_groups_exist:
+    st.write("we are missing proper model to represent this data")
+elif button_clicked_fetch and model_for_user_groups_exist:
+    if arg:
+        group_data = run_until_complete(DataManager.get_data(query_filter, int(arg)))
+        fig, G = draw_graph(group_data, int(arg))
+    else:
+        group_data = run_until_complete(DataManager.get_data(query_filter))
+        fig, G = draw_graph(group_data)
+    st.button(label='Static', on_click=show_static, args=[fig])
+    interact_button = st.button(label='Interact', on_click=show_interact, args=[G])
+    server_button = st.button(label='On server', on_click=show_on_server, args=[G])
 
 
 # RUN SERVER WITH INTERACTIVE GRAPH
