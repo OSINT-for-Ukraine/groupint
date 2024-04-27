@@ -98,7 +98,7 @@ st.markdown("""<hr style="height:2px;border:none;color:#222;background-color:#22
 
 group_id = None
 button_clicked_load = None
-model_for_user_groups_exist = None
+model_for_user_groups_exist = True
 button_clicked_query = None
 button_clicked_relationship = None
 button_clicked_from_messages = None
