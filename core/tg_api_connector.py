@@ -3,6 +3,7 @@ import io
 import openpyxl
 import asyncio
 from typing import Union, AsyncGenerator
+
 from telethon.errors import (
         ChannelInvalidError,
         ChannelPrivateError, 
@@ -17,6 +18,7 @@ from telethon.tl.functions.messages import GetRepliesRequest
 from telethon.tl.types import User, Channel, Chat, PeerUser, PeerChannel
 from models import FetchedChannel, FetchedUser, FetchedUserFromGroup
 from telethon import TelegramClient
+from telethon.sessions import MemorySession
 from telethon.tl.functions.contacts import ResolveUsernameRequest
 
 
@@ -25,8 +27,15 @@ async def is_user_authorized(client):
 
 
 async def create_client(phone_number, API_ID, API_HASH):
-    client_tg = TelegramClient(phone_number, API_ID, API_HASH)
+    session = MemorySession()
+    client_tg = TelegramClient(session, API_ID, API_HASH)
     await client_tg.connect()
+        
+    if not await client_tg.is_user_authorized():
+        await client_tg.send_code_request(phone_number)
+        code = input('Enter the code: ')
+        await client_tg.sign_in(phone_number, code)
+            
     return client_tg
 
 
