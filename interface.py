@@ -184,7 +184,8 @@ if button_clicked_query:
     # run_until_complete(
 #            DataManager.get_data()
 #       )
-    for user in st.session_state.users[:100]:
+    for user in st.session_state.users:
+        #user[0] is user's id
         groups = run_until_complete(
              get_groups_of_which_user_is_part_of(st.session_state.client,str(user[0]),dry_run=False)
         )
