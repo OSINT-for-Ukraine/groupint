@@ -71,6 +71,7 @@ Acquire the  ``API id`` and ``API hash`` from [Telegram](https://core.telegram.o
 ###  Clone project and start the containers (docker compose or docker-compose)
 
  Clone the Groupint project from the OSINT for Ukraine Githubaccount, set inline variables and run docker-compose to set up the project . 
+
 ```
 git clone https://github.com/OSINT-for-Ukraine/groupint.git
 cd groupint
@@ -79,7 +80,9 @@ docker-compose up
 ###  Set log in
 
 Next step is to set your app's password. Create a  ``secrets.toml`` file inside the streamlit folder and set your password.
+
 ```
+
 # Create secrets file 
 cd streamlit 
 touch secrets.toml
@@ -96,7 +99,7 @@ streamlit run interface.py
 
 ## Licensing
 
-Groupint is the exclusive property of OSINT for Ukraine and is distributed under xxxx
+Groupint is distributed under the [General Public License (GPL)](https://www.gnu.org/licenses/agpl-3.0.en.html). You are free to use, distribute, and change the software. Any modified version must also be distributed under the GPL.
 
 
 ## Support and Contact
@@ -107,5 +110,11 @@ Users experiencing technical issues or bugs can report them through the designat
 ## Community Engagement
 
 Stay connected with the OSINT for Ukraine community to receive updates, participate in discussions, and contribute to the ongoing development of Groupint. Engage through forums, social media, and other community channels.
+
+- [Linkedin](https://www.linkedin.com/company/osint-for-ukraine/mycompany/)
+- [Instagram](https://www.instagram.com/osintforukraine/) - @osintforukraine
+- [Linktree](https://linktr.ee/osintforukraine)
+- [YouTube](https://www.youtube.com/@OSINTFORUKRAINE)
+
 
 Thank you for using Groupint, contributing to OSINT for Ukraine's mission to enhance information analysis and transparency.
