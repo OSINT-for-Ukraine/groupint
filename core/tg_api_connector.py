@@ -29,13 +29,7 @@ async def is_user_authorized(client):
 async def create_client(phone_number, API_ID, API_HASH):
     session = MemorySession()
     client_tg = TelegramClient(session, API_ID, API_HASH)
-    await client_tg.connect()
-        
-    if not await client_tg.is_user_authorized():
-        await client_tg.send_code_request(phone_number)
-        code = input('Enter the code: ')
-        await client_tg.sign_in(phone_number, code)
-            
+    await client_tg.connect()      
     return client_tg
 
 
