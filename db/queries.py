@@ -22,6 +22,7 @@ query_dict = {
         """
         MERGE (user:User {id: $user_id})
         SET user.username = $username
+        SET user.alias = $alias
         WITH user
         UNWIND $groups AS group_id
         SET user.group = coalesce(user.group, []) + [group_id]
