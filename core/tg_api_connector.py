@@ -21,6 +21,10 @@ from telethon import TelegramClient
 from telethon.sessions import MemorySession
 from telethon.tl.functions.contacts import ResolveUsernameRequest
 
+def user_alias(user):
+    name = user.first_name if user.first_name is not None else ""
+    surname = user.last_name if user.last_name is not None else ""
+    return name + " " + surname
 
 async def is_user_authorized(client):
     return await client.is_user_authorized()
@@ -29,13 +33,7 @@ async def is_user_authorized(client):
 async def create_client(phone_number, API_ID, API_HASH):
     session = MemorySession()
     client_tg = TelegramClient(session, API_ID, API_HASH)
-    await client_tg.connect()
-        
-    if not await client_tg.is_user_authorized():
-        await client_tg.send_code_request(phone_number)
-        code = input('Enter the code: ')
-        await client_tg.sign_in(phone_number, code)
-            
+    await client_tg.connect()      
     return client_tg
 
 
@@ -73,7 +71,7 @@ async def get_all_participants(client, channel):
     channel = await client(ResolveUsernameRequest(channel))
     users = []
     async for _user in client.iter_participants(entity=channel):
-        users.append((_user.id,_user.username))
+        users.append((_user.id,_user.username,user_alias(_user)))
     return users
 
 async def get_participants_based_on_messages(client, channel, limit:int=10000):
@@ -89,7 +87,7 @@ async def get_participants_based_on_messages(client, channel, limit:int=10000):
     user_list = []
     for id in user_set:
         user = await client.get_entity(id)
-        user_list.append((id,user.username))
+        user_list.append((id,user.username,user_alias(user)))
     return user_list
 
 
