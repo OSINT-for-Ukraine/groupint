@@ -13,6 +13,7 @@ class GraphManager:
         parameters = {
             "user_id": user[0],
             "username": user[1],
+            "alias": user[2],
             "groups": groups
         }
         graph.run(query_dict.get('add_user'), parameters)
