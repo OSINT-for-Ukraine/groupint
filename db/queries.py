@@ -1,12 +1,9 @@
 query_dict = {
-    '*N':
-        """
+    "*N": """
         MATCH (n:User) RETURN n LIMIT $N
         """,
-
     #  problem here the same group update groups_count for user
-    'creator_query':
-        """
+    "creator_query": """
         MERGE (group:Group {id: $group_id})
         SET group += $group_properties
         WITH group
@@ -17,9 +14,7 @@ query_dict = {
         SET user.group = coalesce(user.group, []) + [$group_id] // add list of groups as a property not only as a relation, easier to parse
         MERGE (user)-[:MEMBER_OF]->(group)
         """,
-
-    'add_user':
-        """
+    "add_user": """
         MERGE (user:User {id: $user_id})
         SET user.username = $username
         SET user.alias = $alias
@@ -27,17 +22,13 @@ query_dict = {
         UNWIND $groups AS group_id
         SET user.group = coalesce(user.group, []) + [group_id]
         """,
-
-    'add_groups_to_user':
-        """
+    "add_groups_to_user": """
         MATCH (user:User)
         WHERE user.id = $user_id
         UNWIND $groups AS group_id
         SET user.group = coalesce(user.group, []) + [group_id]
         """,
-
-    'create_relationship_between_users_of_same_groups':
-        """
+    "create_relationship_between_users_of_same_groups": """
         MATCH (n1:User)
         Where size(n1.group)>1 // get rid of trivial relations when user is only part of one group
         MATCH (n2:User)
@@ -48,39 +39,31 @@ query_dict = {
         SET c.group=gr, c.strength=size(gr)
         return n1,n2
         """,
-
-    'intersection_more_than_N':  # retrieve the users with more than N intersection in the same groups
-        """
+    "intersection_more_than_N": """
         MATCH (u1:User)-[:MEMBER_OF]->(g:Group)<-[:MEMBER_OF]-(u2:User)
         WHERE u1 <> u2
         WITH u1, u2, COLLECT(DISTINCT g) AS commonGroups
         WHERE SIZE(commonGroups) > $N
         RETURN u1, u2
-        """,
-
-    'more_than_N_groups':  # retrieve the users with more than N groups
-        """
+        """,  # retrieve the users with more than N intersection in the same groups
+    "more_than_N_groups": """
         MATCH (u:User)
         WHERE u.groups_count > $N
         RETURN *
         ORDER BY u.groups_count DESC
-        """,
-
-    'the_most_groups_per_user':  # retrieve the users with the most groups
-        """
+        """,  # retrieve the users with more than N groups
+    "the_most_groups_per_user": """
         MATCH (u:User) 
         WITH MAX(u.groups_count) AS max_groups
         MATCH (u:User)
         WHERE u.groups_count = max_groups
         RETURN u
-        """,
-
-    'size_rating_for_groups':  # retrieve a rating of the groups ordered by the size
-        """
+        """,  # retrieve the users with the most groups
+    "size_rating_for_groups": """
         MATCH (g:Group) 
         RETURN g.id, g.title, g.user_counts 
         ORDER BY g.user_counts DESC
-        """,
+        """,  # retrieve a rating of the groups ordered by the size
 }
 
 """     

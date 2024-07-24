@@ -1,12 +1,11 @@
-import datetime
-import os
-from typing import Union, Type, Optional
+from typing import Optional, Type, Union
+
 from py2neo.integration import Table
+from telethon.sync import TelegramClient
 
 from core.tg_api_connector import ChannelParser
 from db.dal import GraphManager
 from models import FetchedChannel
-from telethon.sync import TelegramClient
 
 
 async def entry(client: TelegramClient, channel: Union[str, int]) -> FetchedChannel:
@@ -27,8 +26,9 @@ class DataManager:
     @staticmethod
     async def add_user(user: tuple, groups: list) -> None:
         GraphManager.add_user(user, groups)
-   # @staticmethod
-    #async def add_user(user: tuple) -> None:
+
+    # @staticmethod
+    # async def add_user(user: tuple) -> None:
     #    GraphManager.add_user(user)  # TODO return to previous params
 
     @staticmethod
@@ -36,5 +36,7 @@ class DataManager:
         GraphManager.create_relationships()
 
     @staticmethod
-    async def get_data(query: str, n: Optional[int] = None) -> Union[Table, dict, Type['DataFrame']]:
+    async def get_data(
+        query: str, n: Optional[int] = None
+    ) -> Union[Table, dict, Type["DataFrame"]]:
         return GraphManager.fetch_data(query, n)
