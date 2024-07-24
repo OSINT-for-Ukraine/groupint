@@ -1,30 +1,30 @@
-import re
-import io
-import openpyxl
 import asyncio
-from typing import Union, AsyncGenerator
+import re
+from typing import AsyncGenerator, Union
 
-from telethon.errors import (
-        ChannelInvalidError,
-        ChannelPrivateError, 
-        InputConstructorInvalidError, 
-        ChatAdminRequiredError,
-        MsgIdInvalidError
-        )
-from telethon.tl.functions.account import UpdateProfileRequest
-from telethon.tl.functions.channels import LeaveChannelRequest
-from telethon.tl.functions.channels import JoinChannelRequest
-from telethon.tl.functions.messages import GetRepliesRequest
-from telethon.tl.types import User, Channel, Chat, PeerUser, PeerChannel
-from models import FetchedChannel, FetchedUser, FetchedUserFromGroup
 from telethon import TelegramClient
+from telethon.errors import (
+    ChannelInvalidError,
+    ChannelPrivateError,
+    ChatAdminRequiredError,
+    InputConstructorInvalidError,
+    MsgIdInvalidError,
+)
 from telethon.sessions import MemorySession
+from telethon.tl.functions.account import UpdateProfileRequest
+from telethon.tl.functions.channels import JoinChannelRequest, LeaveChannelRequest
 from telethon.tl.functions.contacts import ResolveUsernameRequest
+from telethon.tl.functions.messages import GetRepliesRequest
+from telethon.tl.types import Channel, Chat, PeerChannel, PeerUser, User
+
+from models import FetchedChannel, FetchedUser, FetchedUserFromGroup
+
 
 def user_alias(user):
     name = user.first_name if user.first_name is not None else ""
     surname = user.last_name if user.last_name is not None else ""
     return name + " " + surname
+
 
 async def is_user_authorized(client):
     return await client.is_user_authorized()
@@ -33,14 +33,12 @@ async def is_user_authorized(client):
 async def create_client(phone_number, API_ID, API_HASH):
     session = MemorySession()
     client_tg = TelegramClient(session, API_ID, API_HASH)
-    await client_tg.connect()      
+    await client_tg.connect()
     return client_tg
 
 
 async def generate_otp(client_tg, phone_number):
-    result = await client_tg.send_code_request(
-        phone=phone_number
-    )
+    result = await client_tg.send_code_request(phone=phone_number)
     phone_hash = result.phone_code_hash
     return client_tg, phone_hash
 
@@ -59,7 +57,7 @@ async def send_message(client, message, user="me"):
 
 
 async def get_messages(client, user="me"):
-    output=""
+    output = ""
     async for message in client.iter_messages(entity=user):
         output += f"""{message.id}\n{message.text}\n"""
         if message.buttons:
@@ -71,12 +69,13 @@ async def get_all_participants(client, channel):
     channel = await client(ResolveUsernameRequest(channel))
     users = []
     async for _user in client.iter_participants(entity=channel):
-        users.append((_user.id,_user.username,user_alias(_user)))
+        users.append((_user.id, _user.username, user_alias(_user)))
     return users
 
-async def get_participants_based_on_messages(client, channel, limit:int=10000):
+
+async def get_participants_based_on_messages(client, channel, limit: int = 10000):
     entity = await client.get_entity(channel)
-    messages = await client.get_messages(entity,limit=limit)
+    messages = await client.get_messages(entity, limit=limit)
     print("got messages")
     user_set = set()
     for message in messages:
@@ -87,7 +86,7 @@ async def get_participants_based_on_messages(client, channel, limit:int=10000):
     user_list = []
     for id in user_set:
         user = await client.get_entity(id)
-        user_list.append((id,user.username,user_alias(user)))
+        user_list.append((id, user.username, user_alias(user)))
     return user_list
 
 
@@ -116,11 +115,10 @@ async def get_groups_of_which_user_is_part_of(client, user, dry_run=True):
     # 🗃 Наличие в базе: ✅
 
     # 🔍 Осталось запросов: 3
-    # ['🔍 Искать'] 
-
+    # ['🔍 Искать']
 
     # if the user is in the database we need to click the button "Искать" (search)
-    
+
     if not dry_run:
         async for message in client.iter_messages(entity="telesint_bot", limit=1):
             if message.buttons:
@@ -135,7 +133,7 @@ async def get_groups_of_which_user_is_part_of(client, user, dry_run=True):
     answer_to_parse = ""
     async for message in client.iter_messages(entity="telesint_bot", limit=1):
         answer_to_parse = message.text
-    pattern_groups_text_block = r"(.|\n)*Открытые группы \[.*?\]:\n((.*\n?)*)" 
+    pattern_groups_text_block = r"(.|\n)*Открытые группы \[.*?\]:\n((.*\n?)*)"
     match_obj = re.match(pattern_groups_text_block, answer_to_parse)
     text_block = ""
     if match_obj:
@@ -153,7 +151,9 @@ async def get_groups_of_which_user_is_part_of(client, user, dry_run=True):
 
     pattern_extract_group_names_text = r"@(.*?)\s.*"
     if re.match(pattern_extract_group_names_text, text_block):
-        group_names_text = re.sub(pattern_extract_group_names_text, r"\g<1>", match_obj.group(2))
+        group_names_text = re.sub(
+            pattern_extract_group_names_text, r"\g<1>", match_obj.group(2)
+        )
 
     return group_names_text.split("\n")
 
@@ -178,13 +178,13 @@ class ChannelParser:
         if isinstance(channel, int):
             await self.client(JoinChannelRequest(channel=channel))
         else:
-            await self.client(JoinChannelRequest(channel=f'@{channel}'))
+            await self.client(JoinChannelRequest(channel=f"@{channel}"))
 
     async def leave_channel(self, channel: Union[str, int]) -> None:
         if isinstance(channel, int):
             await self.client(LeaveChannelRequest(channel=channel))
         else:
-            await self.client(LeaveChannelRequest(channel=f'@{channel}'))
+            await self.client(LeaveChannelRequest(channel=f"@{channel}"))
 
     async def get_all_participants(self, channel: Union[str, int]) -> FetchedChannel:
         channel_data = FetchedChannel()
@@ -192,68 +192,95 @@ class ChannelParser:
             if isinstance(channel, int):
                 entity = await self.client.get_entity(channel)
             else:
-                entity = await self.client.get_entity(f'@{channel}')
+                entity = await self.client.get_entity(f"@{channel}")
             channel_data.id = entity.id
             channel_data.title = entity.title
             if entity.broadcast:
-                print('Chanel')
-                users_messages_set = await self.get_comments_from_channel(entity)  # here is data with messages !!!
-                user_set = {(user.user_id, user.user_name, user.first_name) for user in users_messages_set}
+                print("Chanel")
+                users_messages_set = await self.get_comments_from_channel(
+                    entity
+                )  # here is data with messages !!!
+                user_set = {
+                    (user.user_id, user.user_name, user.first_name)
+                    for user in users_messages_set
+                }
                 user_array = list(user_set)
                 channel_data.user_set = user_array
                 channel_data.user_counts = len(user_array)
                 return channel_data
             else:
-                print('Group')
+                print("Group")
                 async for members in self.get_chunked_participants(entity.id):
                     channel_data.user_set.extend(
-                        [(user.id, user.username or 'NULL', user.first_name or 'NULL') async for user in members])
+                        [
+                            (
+                                user.id,
+                                user.username or "NULL",
+                                user.first_name or "NULL",
+                            )
+                            async for user in members
+                        ]
+                    )
                 channel_data.user_counts = len(channel_data.user_set)
                 print(channel_data.user_counts)
-                users_messages_set = await self.get_comments_from_chat(entity)  # here is data with messages !!!
+                users_messages_set = await self.get_comments_from_chat(
+                    entity
+                )  # here is data with messages !!!
                 return channel_data
-        except (ChannelInvalidError, ChannelPrivateError, ChatAdminRequiredError,
-                InputConstructorInvalidError, TimeoutError) as e:
+        except (
+            ChannelInvalidError,
+            ChannelPrivateError,
+            ChatAdminRequiredError,
+            InputConstructorInvalidError,
+            TimeoutError,
+        ) as e:
             print(str(e))
 
-    async def get_chunked_participants(self, channel: Union[str, int],  # CONFIG
-                                       key_word: str = '') -> AsyncGenerator:
+    async def get_chunked_participants(
+        self, channel: Union[str, int], key_word: str = ""  # CONFIG
+    ) -> AsyncGenerator:
         participants = self.client.iter_participants(entity=channel, search=key_word)
         yield participants
 
-    async def get_comments_from_chat(self, chat_entity: Chat) -> list[FetchedUserFromGroup]:
+    async def get_comments_from_chat(
+        self, chat_entity: Chat
+    ) -> list[FetchedUserFromGroup]:
         messages = self.client.iter_messages(chat_entity, limit=1)  # CONFIG
         users_messages_set = []
         async for message in messages:
             try:
                 user_message = FetchedUserFromGroup(
                     user_id=message.from_id.user_id,
-                    message=message.message if message.message else 'NULL',
-                    channel_id=chat_entity.id if chat_entity.id else 'NULL',
-                    channel_title=chat_entity.title if chat_entity.title else 'NULL'
+                    message=message.message if message.message else "NULL",
+                    channel_id=chat_entity.id if chat_entity.id else "NULL",
+                    channel_title=chat_entity.title if chat_entity.title else "NULL",
                 )
                 users_messages_set.append(user_message)
             except AttributeError:
                 ...
         return users_messages_set
 
-    async def get_comments_from_channel(self, channel_entity: Channel) -> list[FetchedUser]:
+    async def get_comments_from_channel(
+        self, channel_entity: Channel
+    ) -> list[FetchedUser]:
         posts = await self.client.get_messages(channel_entity, limit=50)  # CONFIG
         messages = []
         for post in posts:
             if post.id:
                 try:
-                    channel_messages = await self.client(GetRepliesRequest(
-                        peer=channel_entity,
-                        msg_id=post.id,
-                        offset_id=0,
-                        limit=0,
-                        max_id=0,
-                        min_id=0,
-                        hash=0,
-                        offset_date=None,
-                        add_offset=0
-                    ))
+                    channel_messages = await self.client(
+                        GetRepliesRequest(
+                            peer=channel_entity,
+                            msg_id=post.id,
+                            offset_id=0,
+                            limit=0,
+                            max_id=0,
+                            min_id=0,
+                            hash=0,
+                            offset_date=None,
+                            add_offset=0,
+                        )
+                    )
                     messages.extend(channel_messages.messages)
                 except MsgIdInvalidError:
                     pass
@@ -264,15 +291,15 @@ class ChannelParser:
                 user = await self.client.get_entity(user_id)
                 user_message = FetchedUser(
                     user_id=user.id,
-                    user_name=user.username if user.username else 'NULL',
-                    first_name=user.first_name if user.first_name else 'NULL',
-                    last_name=user.last_name if user.last_name else 'NULL',
-                    phone=user.phone if user.phone else 'NULL',
-                    message=message.message if message.message else 'NULL',
-                    channel_id=channel_entity.id if channel_entity.id else 'NULL',
-                    channel_title=channel_entity.title if channel_entity.title else 'NULL'
+                    user_name=user.username if user.username else "NULL",
+                    first_name=user.first_name if user.first_name else "NULL",
+                    last_name=user.last_name if user.last_name else "NULL",
+                    phone=user.phone if user.phone else "NULL",
+                    message=message.message if message.message else "NULL",
+                    channel_id=channel_entity.id if channel_entity.id else "NULL",
+                    channel_title=(
+                        channel_entity.title if channel_entity.title else "NULL"
+                    ),
                 )
                 users_messages_set.append(user_message)
         return users_messages_set
-
-
