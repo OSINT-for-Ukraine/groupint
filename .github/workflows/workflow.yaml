@@ -16,20 +16,3 @@ jobs:
         run: docker-compose down --rmi 'all'
       - name: Build the stack
         run: APP_NAME=groupint NEO4J_USER=neo4j NEO4J_PASSWORD=difficulties-pushup-gaps docker-compose up -d
-  # This workflow contains a single job called "build"
-  # build:
-  #   # The type of runner that the job will run on
-  #   runs-on: self-hosted
-
-  #   # Steps represent a sequence of tasks that will be executed as part of the job
-  #   steps:       
-  #   - name: Deploy using ssh
-  #     uses: OSINT-for-Ukraine/groupint@main
-  #     with:
-  #       host: ${{ secrets.HOST }}
-  #       username: ${{ secrets.USERNAME }}
-  #       key: ${{ secrets.SSH_PRIVATE_KEY }}
-  #       port: 22
-  #       script: |
-  #         sudo docker-compose down --rmi 'all'
-  #         sudo APP_NAME=groupint NEO4J_USER=neo4j NEO4J_PASSWORD=difficulties-pushup-gaps docker-compose up
