@@ -66,6 +66,12 @@ Acquire the  ``API id`` and ``API hash`` from [Telegram](https://core.telegram.o
 2.  Python 3.11
     
 3.  Poetry to install python dependencies and set up your virtual environment
+
+4.  [Pre-commit](https://pre-commit.com/) for linters and codestyle.
+   ```
+pip install pre-commit
+pre-coomit instal
+   ```
    
 
 ###  Clone project and start the containers (docker compose or docker-compose)
@@ -96,6 +102,22 @@ Make sure you have python3.11, a virtual environment, and poetry to install depe
 streamlit run interface.py
 ```
 
+###  Commiting your changes
+
+If you want to enhance groupint by providing your fixes simply 
+1. Create a new branch, with a name related to your change.
+2. Modify the repo with your changes
+3. Commit your change
+  - Choose a meaningful description of your commit
+  - Pre-commit is gonna run static code analysis of your changes.
+    - Either your code will be changed automatically to be compliant
+    - Or you will get guidelines on what you should change.
+4. Push
+5. Create a PR to the main branch
+  - If there is a job triggered by your change it has to complete succsessfuly, you can check the output of the job to see why it failed
+  - Someone need to review your change and mark it as correct
+  - If both conditions above are fulfilled, your change will be merged.
+   
 
 ## Licensing
 
