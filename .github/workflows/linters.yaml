@@ -1,0 +1,16 @@
+name: Deploy
+
+on:
+  pull_request:
+    types: [opened, edited, reopened]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  linters:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
+      - name: linters
+        run: python3 -m venv venv && source venv/bin/activate && python3 -m pip install pre-commit && pre-commit autoupdate && pre-commit run --all-files || RESULT=$? && git --no-pager diff && deactivate && exit $RESULT

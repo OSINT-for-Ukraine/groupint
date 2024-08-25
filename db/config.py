@@ -1,6 +1,6 @@
-from py2neo import Graph
-from core.settings import settings
 import os
+
+from py2neo import Graph
 
 # URI = settings.uri
 # USERNAME = settings.db_username
