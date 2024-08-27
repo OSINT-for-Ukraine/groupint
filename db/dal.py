@@ -60,3 +60,18 @@ class GraphManager:
             case _:
                 raise AttributeError("Here is no such type of output data")
         return result
+
+    @staticmethod
+    def export_data() -> str:
+        result = graph.run("MATCH (n:User) RETURN n").data()
+        res_arr = ["Label,Type,ID,Description,Tags"]
+        for node in result:
+            res_arr.append(
+                "{},Person,{},{},{}".format(
+                    node["n"].get("alias", ""),
+                    node["n"].get("id", ""),
+                    node["n"].get("username", ""),
+                    "|".join(node["n"].get("group", [])),
+                )
+            )
+        return "\n".join(res_arr)

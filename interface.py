@@ -22,6 +22,7 @@ from draw_graph.dynamic_plot import get_graph
 from draw_graph.plot import draw_graph
 from main import DataManager
 from streamlit_utils.text import query_hint
+from db.dal import GraphManager
 
 # ------Check user is authenticated------'''
 if not check_password():
@@ -292,6 +293,10 @@ elif button_clicked_fetch and model_for_user_groups_exist:
     st.button(label="Static", on_click=show_static, args=[fig])
     interact_button = st.button(label="Interact", on_click=show_interact, args=[G])
     server_button = st.button(label="On server", on_click=show_on_server, args=[G])
+
+
+if st.button("Export to CSV"):
+    st.download_button('Download CSV', GraphManager.export_data(), 'text/csv')
 
 
 # RUN SERVER WITH INTERACTIVE GRAPH
