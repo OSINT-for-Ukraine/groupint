@@ -130,13 +130,19 @@ if hasattr(st.session_state, "auth"):
             unsafe_allow_html=True,
         )
 
-        st.write("**Extract Data 📡**")
-        col1, col2 = st.columns(2)
-
+        st.write('**Extract Data 📡**')
+        col1, col2, col3 = st.columns(3)
+        
         with col1:
             button_clicked_load = st.button(label="Get the user from the group")
         with col2:
-            fetch_xlsx_btn = st.button(label="Download users as XLSX")
+            fetch_xlsx_btn = st.button(label='Download users as XLSX')
+        with col3:
+            button_clicked_gephi = st.button(label='Push data to Gephi')
+        
+        #Extract users based on messages
+        n_of_messages_input = st.text_input(label="How many messages should be parsed?",help="integer")
+        button_clicked_from_messages = st.button(label='Extract users based on messages')
 
         # Extract users based on messages
         n_of_messages_input = st.text_input(
@@ -172,6 +178,9 @@ if group_id and fetch_xlsx_btn:
         download_users_file(st.session_state.client, group_id, button_index=0)
     )
     st.write(xlsx_name)
+
+if group_id and button_clicked_gephi:
+    run_until_complete(DataManager.push_to_gephi())
 
 # Extract Users from Messages
 if button_clicked_from_messages:

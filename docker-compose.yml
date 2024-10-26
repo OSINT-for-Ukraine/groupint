@@ -14,7 +14,8 @@ services:
       - $HOME/neo4j/neo4j/plugins:/plugins
     environment:
       - NEO4J_AUTH=none
-      - NEO4J_dbms_security_procedures_unrestricted=gds.*
+      - NEO4J_dbms_security_procedures_unrestricted=gds.*,apoc.*
+      - NEO4J_PLUGINS=["apoc"]
     restart: always
   streamlit:
     container_name: groupint-streamlit
@@ -34,3 +35,4 @@ services:
       - .:/app
     depends_on:
       - neo4j
+

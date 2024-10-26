@@ -52,7 +52,17 @@ if button_clicked_query:
         "**Groups were found. Now based on them we will create relations between users.**"
     )
 
-button_clicked_relationship = st.button(label="Create relationships")
+button_clicked_gephi = st.button(label='Push to Gephi')
+
+if button_clicked_gephi:
+    st.write("**Pushing to Gephi**")
+    run_until_complete(
+        DataManager.push_to_gephi()
+    )
+    st.write("**Finished pushing to Gephi**")
+
+
+button_clicked_relationship = st.button(label='Create relationships')
 
 if button_clicked_relationship:
     st.write("**Creating relationships**")

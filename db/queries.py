@@ -17,7 +17,6 @@ query_dict = {
     "add_user": """
         MERGE (user:User {id: $user_id})
         SET user.username = $username
-        SET user.alias = $alias
         WITH user
         UNWIND $groups AS group_id
         SET user.group = coalesce(user.group, []) + [group_id]
@@ -28,6 +27,21 @@ query_dict = {
         UNWIND $groups AS group_id
         SET user.group = coalesce(user.group, []) + [group_id]
         """,
+<<<<<<< HEAD
+
+    'create_relationship_between_users_of_same_groups':
+        """
+            MATCH (n1:User)
+            WHERE size(n1.group) > 1
+            WITH n1
+            MATCH (n2:User)
+            WHERE size(n2.group) > 1 AND id(n1) < id(n2)
+            WITH n1, n2, [el IN n1.group WHERE el IN n2.group] AS gr
+            WHERE size(gr) > 0
+            MERGE (n1)-[c:RELATED]-(n2)
+            SET c.group = gr, c.strength = size(gr)
+            RETURN n1, n2
+=======
     "create_relationship_between_users_of_same_groups": """
         MATCH (n1:User)
         Where size(n1.group)>1 // get rid of trivial relations when user is only part of one group
@@ -38,6 +52,7 @@ query_dict = {
         MERGE (n1)-[c:RELATED]-(n2)
         SET c.group=gr, c.strength=size(gr)
         return n1,n2
+>>>>>>> 8236b8637b092d1b37e5fc7b6e56ef3da307fbfe
         """,
     "intersection_more_than_N": """
         MATCH (u1:User)-[:MEMBER_OF]->(g:Group)<-[:MEMBER_OF]-(u2:User)
@@ -63,7 +78,15 @@ query_dict = {
         MATCH (g:Group) 
         RETURN g.id, g.title, g.user_counts 
         ORDER BY g.user_counts DESC
-        """,  # retrieve a rating of the groups ordered by the size
+        """,
+    'push_to_gephi':
+        """
+        CALL apoc.gephi.add(
+            'http://localhost:8080/workspace1',  // URL of the Gephi Master Server
+            'workspace1',  // Gephi workspace name
+            'MATCH (n:User)-[r]->(m) RETURN n,r,m'  // Cypher query to select the data to push
+        )
+        """
 }
 
 """     

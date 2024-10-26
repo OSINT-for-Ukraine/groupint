@@ -67,7 +67,9 @@ Acquire the  ``API id`` and ``API hash`` from [Telegram](https://core.telegram.o
     
 3.  Poetry to install python dependencies and set up your virtual environment
 
-4.  [Pre-commit](https://pre-commit.com/) for linters and codestyle.
+4.  Gephi and relevant extensions to visualize data (Clustering cateroy) and Neo4J plugin (for importing data)
+
+5.  [Pre-commit](https://pre-commit.com/) for linters and codestyle.
    ```
 pip install pre-commit
 pre-coomit instal
