@@ -22,7 +22,6 @@ query_dict = {
         """
         MERGE (user:User {id: $user_id})
         SET user.username = $username
-        SET user.alias = $alias
         WITH user
         UNWIND $groups AS group_id
         SET user.group = coalesce(user.group, []) + [group_id]
@@ -38,15 +37,16 @@ query_dict = {
 
     'create_relationship_between_users_of_same_groups':
         """
-        MATCH (n1:User)
-        Where size(n1.group)>1 // get rid of trivial relations when user is only part of one group
-        MATCH (n2:User)
-        Where size(n2.group)>1
-        with n1,n2, [el in n1.group where el in n2.group] as gr 
-        where size(gr)>0 and n1<>n2 // at least 1 shared groups is required to form a relation
-        MERGE (n1)-[c:RELATED]-(n2)
-        SET c.group=gr, c.strength=size(gr)
-        return n1,n2
+            MATCH (n1:User)
+            WHERE size(n1.group) > 1
+            WITH n1
+            MATCH (n2:User)
+            WHERE size(n2.group) > 1 AND id(n1) < id(n2)
+            WITH n1, n2, [el IN n1.group WHERE el IN n2.group] AS gr
+            WHERE size(gr) > 0
+            MERGE (n1)-[c:RELATED]-(n2)
+            SET c.group = gr, c.strength = size(gr)
+            RETURN n1, n2
         """,
 
     'intersection_more_than_N':  # retrieve the users with more than N intersection in the same groups
@@ -81,6 +81,14 @@ query_dict = {
         RETURN g.id, g.title, g.user_counts 
         ORDER BY g.user_counts DESC
         """,
+    'push_to_gephi':
+        """
+        CALL apoc.gephi.add(
+            'http://localhost:8080/workspace1',  // URL of the Gephi Master Server
+            'workspace1',  // Gephi workspace name
+            'MATCH (n:User)-[r]->(m) RETURN n,r,m'  // Cypher query to select the data to push
+        )
+        """
 }
 
 """     

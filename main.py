@@ -38,3 +38,7 @@ class DataManager:
     @staticmethod
     async def get_data(query: str, n: Optional[int] = None) -> Union[Table, dict, Type['DataFrame']]:
         return GraphManager.fetch_data(query, n)
+
+    @staticmethod
+    async def push_to_gephi() -> None:
+        GraphManager.push_to_gephi()

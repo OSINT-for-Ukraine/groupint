@@ -1,11 +1,11 @@
-[tool.poetry]
+[tool.pixi]
 name = "core"
 version = "0.1.0"
 description = ""
 authors = ["Leonid Sliusar <loslyusar@gmail.com>"]
 readme = "README.md"
 
-[tool.poetry.dependencies]
+[tool.pixi.dependencies]
 python = "^3.11"
 telethon = "^1.28.5"
 snscrape = "^0.7.0.20230622"
@@ -28,5 +28,5 @@ xlrd = "^2.0.1"
 
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"

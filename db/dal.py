@@ -1,26 +1,42 @@
-from typing import Union, Type
+from typing import Union, Type, Dict
 from py2neo.integration import Table
 from db.config import graph
 from models import FetchedChannel, FetchedUser
 from py2neo import Node
 from db.queries import query_dict
-
+import streamlit as st
 
 class GraphManager:
 
     @staticmethod
-    def add_user(user: tuple, groups: list) -> None:
-        parameters = {
-            "user_id": user[0],
-            "username": user[1],
-            "alias": user[2],
-            "groups": groups
-        }
+    def add_user(user: tuple | Dict, groups: list) -> None:
+        if isinstance(user, tuple):
+            parameters = {
+                "user_id" : user[0],
+                "username": user[1],
+                "alias": user[2],
+                "groups": groups,
+            }
+        else:
+            # st.write(user)
+            groups = user.get("groups", None)
+            if groups is not None:
+                groups = list(groups.keys())
+            parameters = {
+                "user_id" : user.get('id'),
+                "username": user.get('username'),
+                "groups": groups,
+            }
+
         graph.run(query_dict.get('add_user'), parameters)
 
     @staticmethod
     def create_relationships() -> None:
         graph.run(query_dict.get('create_relationship_between_users_of_same_groups'))
+
+    @staticmethod
+    def push_to_gephi() -> None:
+        graph.run(query_dict.get('push_to_gephi'))
 
     @staticmethod
     def add_fetched_channel(instance: FetchedChannel) -> None:

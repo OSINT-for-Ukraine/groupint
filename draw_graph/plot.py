@@ -1,11 +1,12 @@
-import plotly.graph_objects as go
 import networkx as nx
-
+import plotly.graph_objects as go
 
 def draw_graph(group_data, n=None):
     connection = n if n else None
     G = nx.Graph()
     node_ids = []
+    
+    # Add nodes to the graph
     for data in group_data:
         node = data.get('n')
         label = str(node.labels)
@@ -14,20 +15,25 @@ def draw_graph(group_data, n=None):
         if label == ':User':
             G.add_node(node_id, **node_prop)
             node_ids.append(node_id)
-    i = 0
-    j = i + 1
-    while i < len(node_ids) - 1:
-        while j < len(node_ids):
+    
+    # Add edges to the graph only if there is at least one connection
+    for i in range(len(node_ids) - 1):
+        for j in range(i + 1, len(node_ids)):
             first = node_ids[i]
             second = node_ids[j]
             if connection:
                 G.add_edge(first, second, relationship=connection)
             else:
                 G.add_edge(first, second)
-            j += 1
-        i += 1
-        j = i + 1
+    
+    # Remove nodes with no connections
+    isolated_nodes = [node for node in G.nodes if G.degree(node) == 0]
+    G.remove_nodes_from(isolated_nodes)
+    
+    # Compute the layout
     pos = nx.spring_layout(G)
+    
+    # Extract edge positions
     edge_x = []
     edge_y = []
     for edge in G.edges():
@@ -42,24 +48,24 @@ def draw_graph(group_data, n=None):
         hoverinfo='none',
         mode='lines')
 
+    # Extract node positions and texts
     node_x = []
     node_y = []
     node_text = []
-    for node,properties in G.nodes.data():
+    for node, properties in G.nodes.data():
         x, y = pos[node]
         node_x.append(x)
         node_y.append(y)
         if "username" in properties:
             label = str(properties["username"])
-        elif "id" in properties:
-            label = str(properties["id"])
         else:
-            label = "Unknown"
-        node_text.append(label + "(" + str(node) + ")")
+            label = str(node)
+        node_text.append(label)
 
     node_trace = go.Scatter(
         x=node_x, y=node_y,
-        mode='markers',
+        mode='markers+text',
+        text=node_text,
         hoverinfo='text',
         marker=dict(
             showscale=True,
@@ -73,8 +79,6 @@ def draw_graph(group_data, n=None):
             )
         )
     )
-
-    node_trace.text = node_text
 
     fig = go.Figure(data=[edge_trace, node_trace],
                     layout=go.Layout(

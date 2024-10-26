@@ -19,7 +19,7 @@ def parse_json_users(uploaded_file):
     for user in user_dicts: 
         #There are users with null values for username and groups. 1496462258
         if user['groups'] is not None:
-            run_until_complete(DataManager.add_user(user))
+            run_until_complete(DataManager.add_user(user, user['groups']))
 
 
 def parse_xls_users(uploaded_file):

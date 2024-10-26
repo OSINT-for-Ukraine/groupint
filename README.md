@@ -66,6 +66,8 @@ Acquire the  ``API id`` and ``API hash`` from [Telegram](https://core.telegram.o
 2.  Python 3.11
     
 3.  Poetry to install python dependencies and set up your virtual environment
+
+4.  Gephi and relevant extensions to visualize data (Clustering cateroy) and Neo4J plugin (for importing data)
    
 
 ###  Clone project and start the containers (docker compose or docker-compose)
