@@ -59,5 +59,6 @@ docs/_build/
 
 venv
 .idea
+.vscode
 *.session
 *.session-journal
