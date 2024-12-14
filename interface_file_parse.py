@@ -23,9 +23,8 @@ with st.sidebar.expander("Query hint"):
 try:
     st.session_state.event_loop
 except AttributeError:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    st.session_state.event_loop = loop
+    st.session_state.event_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(st.session_state.event_loop)
 # LOAD DATA WINDOW
 st.write("**Load data into storage**")
 

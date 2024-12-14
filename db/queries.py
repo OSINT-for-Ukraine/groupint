@@ -64,6 +64,17 @@ query_dict = {
         RETURN g.id, g.title, g.user_counts 
         ORDER BY g.user_counts DESC
         """,  # retrieve a rating of the groups ordered by the size
+    "ignore_group_intersection_N": """
+        MATCH (n:User)
+        WHERE NOT('$G' IN n.group)
+        RETURN n
+        LIMIT $N
+    """,
+    "ignore_group_intersection": """
+        MATCH (n:User)
+        WHERE NOT('$G' IN n.group)
+        RETURN n
+    """,
 }
 
 """     

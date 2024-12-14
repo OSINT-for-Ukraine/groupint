@@ -2,6 +2,11 @@ import asyncio
 import subprocess
 import webbrowser
 from socket import AF_INET, SOCK_STREAM, socket
+import os
+import json
+import sys
+import csv
+from io import StringIO
 
 import requests
 import streamlit as st
@@ -34,9 +39,8 @@ with st.sidebar.expander("Query hint"):
 try:
     st.session_state.event_loop
 except AttributeError:
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    st.session_state.event_loop = loop
+    st.session_state.event_loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(st.session_state.event_loop)
 #####  LOAD USER DETAILS  🛰️
 st.write("****Confirm your details to connect to Telegram scraper**** 🛰️ ")
 phone_number_input = st.text_input(label="Phone numer", help="Input your phone number")
@@ -114,7 +118,7 @@ button_clicked_query = None
 button_clicked_relationship = None
 button_clicked_from_messages = None
 n_of_messages_input = None
-users = []
+st.session_state.users = []
 uploaded_file = None
 
 ## UI for loading data into storage
@@ -159,11 +163,10 @@ if hasattr(st.session_state, "auth"):
 ### Get users from the group logic
 if group_id and button_clicked_load:
     # TODO here we should store the info we retrieved from telesint bot to a neo4j db
-    users = run_until_complete(get_all_participants(st.session_state.client, group_id))
+    st.session_state.users = run_until_complete(get_all_participants(st.session_state.client, group_id))
     st.write(
-        f"**{len(users)} Users were extracted from the group. If you expect more users we will try to extract them from the messages.**"
+        f"**{len(st.session_state.users)} Users were extracted from the group. If you expect more users we will try to extract them from the messages.**"
     )
-    st.session_state.users = users
 
 
 # Download XLSX with users from Telesint
@@ -182,7 +185,7 @@ if button_clicked_from_messages:
         )
     )
     st.write(f"{len(users_from_messages)} users extracted")
-    st.session_state.users = users + users_from_messages
+    st.session_state.users.extend(users_from_messages)
     st.write(
         "**Now we need will query the telesint db for info about other groups they're part of**"
     )
@@ -231,13 +234,22 @@ if button_clicked_query:
 # button_clicked_relationship = st.button(label='Create relationships')
 
 if button_clicked_relationship:
-    run_until_complete(DataManager.create_relationships())
+    data_csv = run_until_complete(DataManager.create_relationships())
+    st.download_button(
+        label="Download csv",
+        data=data_csv,
+        file_name="graph.csv",
+        mime="application/json",
+    )
 # st.write('**The data was loaded! Choose your params and click "show graph"**')
 # groups = run_until_complete(get_groups_of_which_user_is_part_of(st.session_state.client, user_id, dry_run=True))
 # st.write(groups)
 # st.write("implement the model for the user who're related by groups which theý're part of")
 # FETCH DATA WINDOW
 
+query_filter = ""
+arg = "0"
+target_user = ""
 st.divider()
 st.write("**Fetch graph from storage**")
 col1, col2 = st.columns(2)
@@ -247,6 +259,13 @@ with col1:
     )
 with col2:
     arg = st.text_input(label="Input integer argument if necessary")
+r2_col1, r2_col2 = st.columns(2)
+with r2_col1:
+    group_id = st.text_input(
+        label="Ignore group", help="You could find hint in the sidebar"
+    )
+with r2_col2:
+    target_user = st.text_input(label="Username of target user")
 
 button_clicked_fetch = st.button(label="Show graph")
 
@@ -267,7 +286,7 @@ def show_on_server(G):
     elements = []
     for node in all_node_attributes:
         elements.append(
-            {"data": {"id": node[0], "label": node[1].pop("username"), **node[1]}}
+            {"data": {"id": node[0], "label": node[1].pop("username", None), **node[1]}}
         )
     for edge in G.edges():
         source, target = edge
@@ -283,15 +302,30 @@ def show_on_server(G):
 if button_clicked_fetch and not model_for_user_groups_exist:
     st.write("we are missing proper model to represent this data")
 elif button_clicked_fetch and model_for_user_groups_exist:
+    kwargs = {"query": query_filter}
     if arg:
-        group_data = run_until_complete(DataManager.get_data(query_filter, int(arg)))
-        fig, G = draw_graph(group_data, int(arg))
-    else:
-        group_data = run_until_complete(DataManager.get_data(query_filter))
-        fig, G = draw_graph(group_data)
+        kwargs["n"] = int(arg)
+    if group_id:
+        kwargs["group_id"] = group_id
+    if target_user:
+        kwargs["target_user"] = target_user
+    group_data = run_until_complete(DataManager.get_data(**kwargs))
+    fig, G = draw_graph(group_data, kwargs.get("n"))
     st.button(label="Static", on_click=show_static, args=[fig])
     interact_button = st.button(label="Interact", on_click=show_interact, args=[G])
     server_button = st.button(label="On server", on_click=show_on_server, args=[G])
+    st.download_button(
+        label="Download json graph",
+        data=DataManager.data_to_str_format(group_data, "json", target_user),
+        file_name="graph.json",
+        mime="application/json",
+    )
+    st.download_button(
+        label="Download csv graph",
+        data=DataManager.data_to_str_format(group_data, "csv", target_user),
+        file_name="graph.csv",
+        mime="application/json",
+    )
 
 
 # RUN SERVER WITH INTERACTIVE GRAPH

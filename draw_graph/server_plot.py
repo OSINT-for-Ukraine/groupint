@@ -1,5 +1,6 @@
 import json
 import os.path
+import uuid
 
 import dash_cytoscape as cyto
 from dash import Dash, Input, Output, dcc, html
@@ -64,6 +65,7 @@ def displayTapNodeData(data):
 def update_graph():
     data = request.get_json()
     with open(json_path, "w") as file:
+    #  with open(f"/tmp/test_{uuid.uuid4()}.json", "w") as file:
         json.dump(data, file)
     return {"response": "Graph updated successfully!", "status": 200}
 
