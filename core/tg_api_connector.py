@@ -149,12 +149,15 @@ async def get_groups_of_which_user_is_part_of(client, user, dry_run=True):
     # ...
     # @groupname <free text>"
 
+    group_names_text = ""
     pattern_extract_group_names_text = r"@(.*?)\s.*"
     if re.match(pattern_extract_group_names_text, text_block):
         group_names_text = re.sub(
             pattern_extract_group_names_text, r"\g<1>", match_obj.group(2)
         )
 
+    if not group_names_text:
+        return []
     return group_names_text.split("\n")
 
 
