@@ -120,6 +120,8 @@ button_clicked_from_messages = None
 n_of_messages_input = None
 st.session_state.users = []
 uploaded_file = None
+offset_date = None
+limit_date = None
 
 ## UI for loading data into storage
 if hasattr(st.session_state, "auth"):
@@ -146,6 +148,8 @@ if hasattr(st.session_state, "auth"):
         n_of_messages_input = st.text_input(
             label="How many messages should be parsed?", help="integer"
         )
+        offset_date = st.date_input(label="Date from messages parsing start")
+        limit_date = st.date_input(label="Date where messages parsing stop")
         button_clicked_from_messages = st.button(
             label="Extract users based on messages"
         )
@@ -181,7 +185,7 @@ if button_clicked_from_messages:
     print("entered")
     users_from_messages = run_until_complete(
         get_participants_based_on_messages(
-            st.session_state.client, group_id, int(n_of_messages_input)
+            st.session_state.client, group_id, int(n_of_messages_input), offset_date, limit_date
         )
     )
     st.write(f"{len(users_from_messages)} users extracted")

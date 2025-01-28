@@ -1,6 +1,7 @@
 import asyncio
 import re
-from typing import AsyncGenerator, Union
+from datetime import date
+from typing import AsyncGenerator, Optional, Union
 
 from telethon import TelegramClient
 from telethon.errors import (
@@ -73,12 +74,14 @@ async def get_all_participants(client, channel):
     return users
 
 
-async def get_participants_based_on_messages(client, channel, limit: int = 10000):
+async def get_participants_based_on_messages(client, channel, limit: int = 10000, offset_date: Optional[date] = None, limit_date: Optional[date] = None):
     entity = await client.get_entity(channel)
-    messages = await client.get_messages(entity, limit=limit)
+    messages = await client.get_messages(entity, limit=limit, offset_date=offset_date)
     print("got messages")
     user_set = set()
     for message in messages:
+        if message.date > limit_date:
+            break
         if type(message.from_id) is PeerUser:
             user_set.add(message.from_id.user_id)
         elif type(message.from_id) is PeerChannel:
