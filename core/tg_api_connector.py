@@ -80,7 +80,7 @@ async def get_participants_based_on_messages(client, channel, limit: int = 10000
     print("got messages")
     user_set = set()
     for message in messages:
-        if message.date > limit_date:
+        if message.date.date() > limit_date:
             break
         if type(message.from_id) is PeerUser:
             user_set.add(message.from_id.user_id)
