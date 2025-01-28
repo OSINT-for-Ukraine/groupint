@@ -185,7 +185,11 @@ if button_clicked_from_messages:
     print("entered")
     users_from_messages = run_until_complete(
         get_participants_based_on_messages(
-            st.session_state.client, group_id, int(n_of_messages_input), offset_date, limit_date
+            st.session_state.client,
+            group_id,
+            int(n_of_messages_input) if n_of_messages_input else None,
+            offset_date,
+            limit_date,
         )
     )
     st.write(f"{len(users_from_messages)} users extracted")
