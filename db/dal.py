@@ -75,7 +75,7 @@ class GraphManager:
             if not node:
                 continue
             mark_user = 1 if node.get("username") else 0
-            list_data.append([node.get("alias"), node.get("username"), node.get("id"), ";".join(node.get("group")), mark_user])
+            list_data.append([node.get("alias"), node.get("username"), node.get("id"), ";".join(node.get("group", [])), mark_user])
         buffer = StringIO()
         writer = csv.writer(buffer, delimiter=':', quotechar='"', quoting=csv.QUOTE_MINIMAL)
         for row in list_data:

@@ -2,7 +2,7 @@ import networkx as nx
 import plotly.graph_objects as go
 
 
-def draw_graph(group_data, n=None):
+def draw_graph(group_data, n=None, group_id=None):
     connection = n if n else None
     G = nx.Graph()
     node_ids = []
@@ -11,22 +11,34 @@ def draw_graph(group_data, n=None):
         label = str(node.labels)
         node_prop = dict(node)
         node_id = node_prop.pop("id")
+        mark_user = 1 if node_prop.get("username") else 0
         if label == ":User":
-            G.add_node(node_id, **node_prop)
+            #  G.add_node(node_id, **node_prop)
+            G.add_node(
+                node_id,
+                **{
+                    "alias": node_prop.get("alias"),
+                    "username": node_prop.get("username", "Unknown"),
+                    "id": node_prop.get("id"),
+                    "group": node.get("group", []),
+                    "target_user": mark_user,
+                },
+            )
             node_ids.append(node_id)
-    i = 0
-    j = i + 1
-    while i < len(node_ids) - 1:
-        while j < len(node_ids):
-            first = node_ids[i]
-            second = node_ids[j]
-            if connection:
-                G.add_edge(first, second, relationship=connection)
-            else:
-                G.add_edge(first, second)
-            j += 1
-        i += 1
-        j = i + 1
+    nodes = G.nodes.data()
+    for i, n1 in nodes:
+        for j, n2 in nodes:
+            if i == j:
+                continue
+            for g in n1["group"]:
+                if group_id and g == group_id:
+                    continue
+                if g in n2["group"]:
+                    if connection:
+                        G.add_edge(i, j, relationship=connection)
+                    else:
+                        G.add_edge(i, j)
+                    break
     pos = nx.spring_layout(G)
     edge_x = []
     edge_y = []

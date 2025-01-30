@@ -76,12 +76,10 @@ async def get_all_participants(client, channel):
 
 async def get_participants_based_on_messages(client, channel, limit: int = 10000, offset_date: Optional[date] = None, limit_date: Optional[date] = None):
     entity = await client.get_entity(channel)
-    messages = await client.get_messages(entity, limit=limit)
+    messages = await client.get_messages(entity, limit=limit, offset_date=offset_date, reverse=True if offset_date else False)
     print("got messages")
     user_set = set()
     for message in messages:
-        if offset_date and message.date.date() < offset_date:
-            continue
         if limit_date and message.date.date() > limit_date:
             break
         if type(message.from_id) is PeerUser:
