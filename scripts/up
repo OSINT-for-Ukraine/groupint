@@ -1,0 +1,12 @@
+#!/usr/bin/env sh
+# Default: Groupint on Docker Desktop (reads COMPOSE_FILE from .env).
+set -e
+cd "$(dirname "$0")/.."
+unset DOCKER_HOST
+docker context use desktop-linux
+APP_NAME=groupint docker compose up -d --build "$@"
+
+echo ""
+echo "Groupint (Docker Desktop):"
+echo "  App:   http://localhost:18501"
+echo "  Neo4j: http://localhost:17474  (On server in Streamlit opens Browser with query)"

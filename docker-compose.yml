@@ -1,3 +1,4 @@
+# Legacy system-docker ports. Default stack: COMPOSE_FILE=docker-compose.desktop.yml or ./scripts/up
 version: '3.8'
 services:
   neo4j:

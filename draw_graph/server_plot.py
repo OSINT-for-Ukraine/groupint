@@ -1,4 +1,5 @@
 import json
+import os
 import os.path
 
 import dash_cytoscape as cyto
@@ -10,6 +11,8 @@ app = Dash(__name__, suppress_callback_exceptions=True)
 json_path = os.path.abspath("draw_graph/test.json")
 with open(json_path, "rb") as file:
     elements = json.load(file)
+
+_graph_elements = elements
 
 default_stylesheet = [
     {
@@ -62,10 +65,20 @@ def displayTapNodeData(data):
 
 @app.server.route("/update-graph", methods=["POST"])
 def update_graph():
+    global _graph_elements
     data = request.get_json()
-    with open(json_path, "w") as file:
+    _graph_elements = data
+    with open(json_path, "w", encoding="utf-8") as file:
         json.dump(data, file)
     return {"response": "Graph updated successfully!", "status": 200}
+
+
+@app.callback(
+    Output("cytoscape-update-layout", "elements"),
+    Input("graph-refresh-interval", "n_intervals"),
+)
+def sync_graph_elements(_n):
+    return _graph_elements
 
 
 @app.callback(
@@ -77,4 +90,5 @@ def update_layout(layout):
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    port = int(os.environ.get("DASH_PORT", "8050"))
+    app.run(host="0.0.0.0", port=port, debug=False)

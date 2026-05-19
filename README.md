@@ -50,9 +50,9 @@ Headquartered in The Hague, we are a multinational team of professionals with ex
 
 ### Acquire API credentials
 
-Groupint is powered by [Telesint](https://telesint.dev/en/), a database of over 3 million open Telegram chats and tens of thousands of private chats. When you log in to Groupint, you are required to set up a session with Telesint to access data on Telegram groups. Provide your ``phone number``, ``API id`` and ``API hash`` and create your session.
+Groupint uses your own Telegram account (via [Telethon](https://docs.telethon.dev/)) to scrape group members and stores results in Neo4j for graph analysis.
 
-Acquire the  ``API id`` and ``API hash`` from [Telegram](https://core.telegram.org/api/obtaining_api_id). You need to do the following:
+Acquire your ``API id`` and ``API hash`` from [Telegram](https://core.telegram.org/api/obtaining_api_id). You need to do the following:
 1. Sign up for Telegram
 2. Log in to your Telegram account [https://my.telegram.org](https://my.telegram.org/).
 3. Got to ["API development tools"](https://my.telegram.org/apps) and fill out the form
@@ -83,18 +83,18 @@ git clone https://github.com/OSINT-for-Ukraine/groupint.git
 cd groupint
 docker-compose up
 ```
-###  Set log in
+###  Telegram defaults (optional)
 
-Next step is to set your app's password. Create a  ``secrets.toml`` file inside the streamlit folder and set your password.
+Default phone, API id, and API hash are read from ``.streamlit/secrets.toml``:
 
+```toml
+[telegram]
+phone = "+351966750855"
+api_id = "38530306"
+api_hash = "your_api_hash"
 ```
 
-# Create secrets file 
-cd streamlit 
-touch secrets.toml
-# Set password variable
-password = "xxxx"
-```
+Edit this file to change defaults. The app does not use a separate Streamlit password gate.
 ###  Run Groupint
 
 Make sure you have python3.11, a virtual environment, and poetry to install dependencies and run the project. To run the app:
