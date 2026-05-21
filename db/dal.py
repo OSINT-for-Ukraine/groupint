@@ -528,6 +528,243 @@ class GraphManager:
             return False
 
     @staticmethod
+    def ensure_incident_constraints() -> bool:
+        ok = True
+        for key in (
+            "ensure_incident_constraints",
+            "ensure_watchlist_channel_ref_unique",
+            "ensure_incident_monitor_config_id",
+        ):
+            try:
+                graph.run(query_dict[key])
+            except Exception:
+                ok = False
+        return ok
+
+    @staticmethod
+    def list_watchlist_channels() -> list[dict]:
+        try:
+            return graph.run(query_dict["list_watchlist_channels"]).data()
+        except Exception:
+            return []
+
+    @staticmethod
+    def get_incident_monitor_config() -> dict:
+        rows = graph.run(query_dict["get_incident_monitor_config"]).data()
+        if not rows:
+            return {}
+        row = rows[0]
+        return {
+            "id": row.get("id", "default"),
+            "global_keywords": list(row.get("global_keywords") or []),
+            "global_keywords_enabled": bool(row.get("global_keywords_enabled")),
+            "fetch_interval_sec": int(row.get("fetch_interval_sec") or 300),
+            "scheduler_enabled": bool(row.get("scheduler_enabled")),
+            "last_fetch_at": row.get("last_fetch_at"),
+            "run_pipeline_after_fetch": bool(
+                row.get("run_pipeline_after_fetch", True)
+            ),
+        }
+
+    @staticmethod
+    def upsert_incident_monitor_config(**fields: object) -> None:
+        graph.run(
+            query_dict["upsert_incident_monitor_config"],
+            {
+                "global_keywords": fields.get("global_keywords"),
+                "global_keywords_enabled": fields.get("global_keywords_enabled"),
+                "fetch_interval_sec": fields.get("fetch_interval_sec"),
+                "scheduler_enabled": fields.get("scheduler_enabled"),
+                "last_fetch_at": fields.get("last_fetch_at"),
+                "run_pipeline_after_fetch": fields.get("run_pipeline_after_fetch"),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+    @staticmethod
+    def get_watchlist_channel(channel_ref: str) -> dict | None:
+        rows = graph.run(
+            query_dict["get_watchlist_channel"], {"channel_ref": channel_ref}
+        ).data()
+        return rows[0] if rows else None
+
+    @staticmethod
+    def upsert_watchlist_channel(
+        channel_ref: str,
+        *,
+        enabled: bool = True,
+        title: str | None = None,
+        last_polled_at: str | None = None,
+        last_message_id: int | None = None,
+        keywords: list[str] | None = None,
+        keywords_enabled: bool | None = None,
+        use_global_keywords: bool | None = None,
+    ) -> None:
+        graph.run(
+            query_dict["upsert_watchlist_channel"],
+            {
+                "channel_ref": channel_ref,
+                "enabled": enabled,
+                "title": title,
+                "last_polled_at": last_polled_at,
+                "last_message_id": last_message_id,
+                "keywords": keywords,
+                "keywords_enabled": keywords_enabled,
+                "use_global_keywords": use_global_keywords,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+    @staticmethod
+    def delete_watchlist_channel(channel_ref: str) -> None:
+        graph.run(
+            query_dict["delete_watchlist_channel"], {"channel_ref": channel_ref}
+        )
+
+    @staticmethod
+    def messages_pending_keyword_prefilter(limit: int = 64) -> list[dict]:
+        return graph.run(
+            query_dict["messages_pending_keyword_prefilter"], {"limit": int(limit)}
+        ).data()
+
+    @staticmethod
+    def messages_pending_clean(limit: int = 32) -> list[dict]:
+        return graph.run(
+            query_dict["messages_pending_clean"], {"limit": int(limit)}
+        ).data()
+
+    @staticmethod
+    def messages_pending_filter(limit: int = 32) -> list[dict]:
+        return graph.run(
+            query_dict["messages_pending_filter"], {"limit": int(limit)}
+        ).data()
+
+    @staticmethod
+    def messages_pending_dedupe(limit: int = 200) -> list[dict]:
+        return graph.run(
+            query_dict["messages_pending_dedupe"], {"limit": int(limit)}
+        ).data()
+
+    @staticmethod
+    def messages_pending_extract(limit: int = 32) -> list[dict]:
+        return graph.run(
+            query_dict["messages_pending_extract"], {"limit": int(limit)}
+        ).data()
+
+    @staticmethod
+    def messages_pending_geocode(limit: int = 32) -> list[dict]:
+        return graph.run(
+            query_dict["messages_pending_geocode"], {"limit": int(limit)}
+        ).data()
+
+    @staticmethod
+    def messages_pending_incident_link(limit: int = 32) -> list[dict]:
+        return graph.run(
+            query_dict["messages_pending_incident_link"], {"limit": int(limit)}
+        ).data()
+
+    @staticmethod
+    def messages_for_dedupe_by_date(date_prefix: str | None, limit: int = 500) -> list[dict]:
+        rows = graph.run(
+            query_dict["messages_for_dedupe_by_date"],
+            {"date_prefix": date_prefix, "limit": int(limit)},
+        ).data()
+        return rows[: int(limit)]
+
+    @staticmethod
+    def update_message_incident_fields(
+        group_id: str,
+        message_id: int,
+        **fields: object,
+    ) -> None:
+        params: dict = {
+            "group_id": group_id,
+            "message_id": int(message_id),
+            "text_clean": fields.get("text_clean"),
+            "incident_checked": fields.get("incident_checked"),
+            "incident_processed": fields.get("incident_processed"),
+            "category": fields.get("category"),
+            "location_text": fields.get("location_text"),
+            "lat": fields.get("lat"),
+            "lon": fields.get("lon"),
+            "pipeline_stage": fields.get("pipeline_stage"),
+        }
+        graph.run(query_dict["update_message_incident_fields"], params)
+
+    @staticmethod
+    def merge_incident_from_message(
+        group_id: str,
+        message_id: int,
+        incident_id: str,
+        *,
+        category: str,
+        location_text: str,
+        lat: float,
+        lon: float,
+        occurred_at: str | None = None,
+        summary: str | None = None,
+        dedupe_cluster_id: str | None = None,
+    ) -> str:
+        rows = graph.run(
+            query_dict["merge_incident_from_message"],
+            {
+                "group_id": group_id,
+                "message_id": int(message_id),
+                "incident_id": incident_id,
+                "category": category,
+                "location_text": location_text,
+                "lat": float(lat),
+                "lon": float(lon),
+                "occurred_at": occurred_at,
+                "summary": summary,
+                "dedupe_cluster_id": dedupe_cluster_id or incident_id,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            },
+        ).data()
+        if rows and rows[0].get("incident_id"):
+            return str(rows[0]["incident_id"])
+        return incident_id
+
+    @staticmethod
+    def link_message_to_incident(
+        group_id: str, message_id: int, incident_id: str
+    ) -> None:
+        graph.run(
+            query_dict["link_message_to_incident"],
+            {
+                "group_id": group_id,
+                "message_id": int(message_id),
+                "incident_id": incident_id,
+            },
+        )
+
+    @staticmethod
+    def incident_pipeline_counts() -> dict[str, int]:
+        rows = graph.run(query_dict["incident_pipeline_counts"]).data()
+        if not rows:
+            return {}
+        row = rows[0]
+        return {k: int(row.get(k) or 0) for k in row}
+
+    @staticmethod
+    def list_incidents_for_map(
+        *,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        category: str | None = None,
+        limit: int = 5000,
+    ) -> list[dict]:
+        return graph.run(
+            query_dict["list_incidents_for_map"],
+            {
+                "date_from": date_from,
+                "date_to": date_to,
+                "category": category,
+                "limit": int(limit),
+            },
+        ).data()
+
+    @staticmethod
     def fetch_data(
         query_key: str, n: int = None, out_type: str = "map"
     ) -> Union[Table, dict, Type["DataFrame"]]:

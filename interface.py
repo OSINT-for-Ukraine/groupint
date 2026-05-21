@@ -6,33 +6,16 @@ import streamlit as st
 from telethon.errors import ChannelPrivateError, UsernameInvalidError, UsernameNotOccupiedError
 
 from core.login import run_until_complete, sync_streamlit_event_loop
-from core.telegram_session import (
-    SESSIONS_DIR,
-    SessionInUseError,
-    delete_session_files,
-    disconnect_telegram_client,
-    list_saved_phones,
-    list_sessions,
-    sanitize_phone,
-    save_string_session,
-    session_file_exists,
-    session_file_path,
-    session_health_fraction,
-    touch_session,
-    update_session_check,
-)
+from core.telegram_session import disconnect_telegram_client
 from core.tg_api_connector import (
     GroupResolveError,
     create_client,
     extract_endorsements_from_stored_messages,
     extract_users_from_stored_messages,
     fetch_group_messages,
-    generate_otp,
     get_all_participants,
-    get_telegram_authorizations,
     is_user_authorized,
     normalize_telegram_group_ref,
-    verify_otp,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -45,7 +28,22 @@ from draw_graph.plot import draw_graph
 from db.dal import GraphManager
 from db.neo4j_browser import neo4j_browser_url
 from main import DataManager
+from streamlit_utils.telegram_auth import (
+    render_telegram_auth_panel,
+    streamlit_holder_id as _streamlit_holder_id,
+)
 from streamlit_utils.text import query_hint
+
+
+def _resolved_group_fallback(
+    raw_group: str, title: str | None = None
+) -> "ResolvedGroup":
+    from core.group_identity import ResolvedGroup
+
+    return ResolvedGroup(
+        canonical_id=normalize_telegram_group_ref(raw_group),
+        title=title,
+    )
 
 
 def _unpack_participants_fetch(
@@ -61,17 +59,119 @@ def _unpack_participants_fetch(
         )
     if len(result) == 3:
         users, group_title, resolved = result
+        if not isinstance(resolved, ResolvedGroup):
+            resolved = _resolved_group_fallback(raw_group, group_title)
         return users, group_title, resolved
     if len(result) == 2:
         users, group_title = result
-        resolved = ResolvedGroup(
-            canonical_id=normalize_telegram_group_ref(raw_group),
-            title=group_title,
-        )
+        resolved = _resolved_group_fallback(raw_group, group_title)
         return users, group_title, resolved
     raise ValueError(
         f"Participant fetch returned {len(result)} values, expected 2 or 3"
     )
+
+
+def _unpack_messages_fetch(
+    result: object,
+    raw_group: str,
+) -> tuple[int, int, str | None, object]:
+    """Normalize message fetch result (4-tuple or legacy 3-tuple)."""
+    from core.group_identity import ResolvedGroup
+
+    if not isinstance(result, tuple):
+        raise TypeError(
+            f"Message fetch returned {type(result).__name__}, expected tuple"
+        )
+    if len(result) == 4:
+        inserted, skipped, group_title, resolved = result
+        if not isinstance(resolved, ResolvedGroup):
+            resolved = _resolved_group_fallback(raw_group, group_title)
+        return int(inserted), int(skipped), group_title, resolved
+    if len(result) == 3:
+        inserted, skipped, group_title = result
+        return (
+            int(inserted),
+            int(skipped),
+            group_title,
+            _resolved_group_fallback(raw_group, group_title),
+        )
+    raise ValueError(
+        f"Message fetch returned {len(result)} values, expected 3 or 4"
+    )
+
+
+def _unpack_endorsements_fetch(
+    result: object,
+    raw_group: str,
+) -> tuple[int, int, object]:
+    """Normalize endorsement fetch result (3-tuple or legacy 2-tuple)."""
+    from core.group_identity import ResolvedGroup
+
+    if not isinstance(result, tuple):
+        raise TypeError(
+            f"Endorsement fetch returned {type(result).__name__}, expected tuple"
+        )
+    if len(result) == 3:
+        inserted, total_links, resolved = result
+        if not isinstance(resolved, ResolvedGroup):
+            resolved = _resolved_group_fallback(raw_group)
+        return int(inserted), int(total_links), resolved
+    if len(result) == 2:
+        inserted, total_links = result
+        return int(inserted), int(total_links), _resolved_group_fallback(raw_group)
+    raise ValueError(
+        f"Endorsement fetch returned {len(result)} values, expected 2 or 3"
+    )
+
+
+async def _call_extract_endorsements(
+    client: object,
+    group_ref: str,
+    on_progress: Callable[[float, str], None] | None,
+) -> object:
+    """Call endorsement extract with new or legacy function signature."""
+    import inspect
+
+    sig = inspect.signature(extract_endorsements_from_stored_messages)
+    first_param = next(iter(sig.parameters.keys()), "")
+    if first_param == "client":
+        return await extract_endorsements_from_stored_messages(
+            client, group_ref, on_progress=on_progress
+        )
+    return await extract_endorsements_from_stored_messages(
+        group_ref, on_progress=on_progress
+    )
+
+
+def _message_counts_for_input(group_id: str) -> dict[str, int]:
+    """Count messages for normalized ref, with canonical id fallback when stored under alias."""
+    norm_ref = normalize_telegram_group_ref(group_id)
+    counts = GraphManager.count_group_messages(norm_ref)
+    if counts.get("total", 0) > 0:
+        return counts
+    if not hasattr(st.session_state, "client") or not st.session_state.get("auth"):
+        return counts
+
+    async def _resolve_counts() -> dict[str, int]:
+        from core.group_identity import group_identity_from_entity
+        from core.tg_api_connector import ensure_telegram_client, resolve_group_entity
+
+        client = st.session_state.client
+        await ensure_telegram_client(client)
+        entity = await resolve_group_entity(client, group_id)
+        resolved = group_identity_from_entity(entity, group_id)
+        canon = resolved.canonical_id
+        if canon != norm_ref:
+            alt = GraphManager.count_group_messages(canon)
+            if alt.get("total", 0) > 0:
+                return alt
+        return counts
+
+    try:
+        return run_until_complete(_resolve_counts())
+    except Exception:
+        logger.debug("Could not resolve group for message counts", exc_info=True)
+        return counts
 
 
 def _merge_user_rows(
@@ -109,22 +209,14 @@ def _format_scraped_group_label(row: dict) -> str:
     return label
 
 
-def _streamlit_holder_id() -> str:
-    return str(id(st.session_state))
-
-
 def _init_streamlit_state() -> None:
     if "event_loop" not in st.session_state:
         st.session_state.event_loop = asyncio.new_event_loop()
 
 
-def _ensure_telegram_runtime() -> None:
-    sync_streamlit_event_loop()
-
-
 def _refresh_telegram_client() -> None:
     """Re-bind Telethon client to the current Streamlit event loop."""
-    _ensure_telegram_runtime()
+    sync_streamlit_event_loop()
     phone = st.session_state.get("phone")
     api_id = st.session_state.get("api_id")
     api_hash = st.session_state.get("api_hash")
@@ -135,78 +227,16 @@ def _refresh_telegram_client() -> None:
             phone,
             api_id,
             api_hash,
-            holder_id=_streamlit_holder_id(),
+            holder_id=_streamlit_holder_id("main"),
             force_new=False,
         )
     )
     st.session_state.client = client
 
 
-def _connect_telegram_phone(
-    phone: str, api_id: str, api_hash: str, *, force_new: bool = False
-) -> bool:
-    """Create or restore client; return True when Telegram session is authorized."""
-    _ensure_telegram_runtime()
-    client = run_until_complete(
-        create_client(
-            phone,
-            api_id,
-            api_hash,
-            holder_id=_streamlit_holder_id(),
-            force_new=force_new,
-        )
-    )
-    st.session_state.client = client
-    st.session_state.phone = phone
-    st.session_state.api_id = api_id
-    st.session_state.api_hash = api_hash
-    authorized = run_until_complete(is_user_authorized(client))
-    st.session_state.auth = authorized
-    update_session_check(phone, authorized)
-    if authorized:
-        save_string_session(phone, client)
-        touch_session(phone, authorized=True)
-    return authorized
-
-
-def _auto_reconnect_telegram() -> None:
-    if st.session_state.get("auth") or st.session_state.get("_auto_reconnect_attempted"):
-        return
-    st.session_state._auto_reconnect_attempted = True
-    phone = st.session_state.get("phone") or _phone_default
-    if not session_file_exists(phone):
-        sessions = list_sessions()
-        if sessions:
-            phone = sessions[0].get("phone") or sessions[0]["phone_key"]
-    if not session_file_exists(phone):
-        return
-    api_id = str(st.session_state.get("api_id", _api_id_default))
-    api_hash = st.session_state.get("api_hash", _api_hash_default)
-    try:
-        if _connect_telegram_phone(phone, api_id, api_hash, force_new=False):
-            st.session_state._auto_reconnect_notice = (
-                f"Reconnected automatically using saved session ({phone})."
-            )
-    except Exception as exc:
-        logger.warning("Auto-reconnect failed: %s", exc)
-
-
-def _default_telegram_creds() -> tuple[str, str, str]:
-    fallbacks = ("+351966750855", "38530306", "bd81a099f245659c4cc29a2fd3a7812c")
-    try:
-        tg = st.secrets["telegram"]
-        return (
-            str(tg.get("phone", fallbacks[0])),
-            str(tg.get("api_id", fallbacks[1])),
-            str(tg.get("api_hash", fallbacks[2])),
-        )
-    except (KeyError, FileNotFoundError, AttributeError):
-        return fallbacks
-
-
 _init_streamlit_state()
 
-st.components.v1.html(
+st.html(
     """
 <script>
 document.addEventListener('keydown', function(e) {
@@ -219,277 +249,20 @@ document.addEventListener('keydown', function(e) {
 }, true);
 </script>
 """,
-    height=0,
+    width=1,
+    unsafe_allow_javascript=True,
 )
-
-_phone_default, _api_id_default, _api_hash_default = _default_telegram_creds()
-
-_auto_reconnect_telegram()
 
 with st.sidebar.expander("Query hint"):
     st.markdown(query_hint)
 
-with st.sidebar.expander("Telegram sessions", expanded=True):
-    st.caption(f"Sessions directory: `{SESSIONS_DIR}`")
-    sessions = list_sessions()
-    if not sessions:
-        st.caption("No saved sessions yet. Complete OTP once to persist.")
-    else:
-        for sess in sessions:
-            phone_label = sess.get("phone") or sess["phone_key"]
-            st.write(f"**{phone_label}**")
-            health = session_health_fraction(sess)
-            if (
-                st.session_state.get("auth")
-                and sanitize_phone(st.session_state.get("phone", ""))
-                == sanitize_phone(phone_label)
-            ):
-                health = 1.0
-            st.progress(health)
-            if health >= 1.0:
-                st.caption("Authorized — no scheduled expiry")
-            elif sess.get("authorized_at"):
-                st.caption("Session file present — click Connect to verify")
-            else:
-                st.caption("Re-login required")
-            if sess.get("last_used_at"):
-                st.caption(f"Last used: {sess['last_used_at'][:19]}")
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                if st.button("Connect", key=f"sess_conn_{sess['phone_key']}"):
-                    st.session_state["_sess_connect"] = phone_label
-            with c2:
-                if st.button("Disconnect", key=f"sess_disc_{sess['phone_key']}"):
-                    st.session_state["_sess_disconnect"] = phone_label
-            with c3:
-                if st.button("Delete", key=f"sess_del_{sess['phone_key']}"):
-                    st.session_state["_sess_delete"] = phone_label
-            st.divider()
-
-    if (
-        st.session_state.get("auth")
-        and hasattr(st.session_state, "client")
-        and st.button("Refresh Telegram device list", key="refresh_tg_auths")
-    ):
-        try:
-            st.session_state["_tg_authorizations"] = run_until_complete(
-                get_telegram_authorizations(st.session_state.client)
-            )
-        except Exception as exc:
-            st.warning(f"Could not load device list: {exc}")
-
-    tg_auths = st.session_state.get("_tg_authorizations")
-    if tg_auths:
-        with st.expander("Telegram account devices (from API)"):
-            for row in tg_auths:
-                current = " (this app)" if row.get("current") else ""
-                st.write(
-                    f"- {row.get('device')} / {row.get('platform')}{current} — "
-                    f"active {row.get('date_active', '?')[:19]}"
-                )
-
-if st.session_state.get("_sess_connect"):
-    phone = st.session_state.pop("_sess_connect")
-    try:
-        ok = _connect_telegram_phone(
-            phone, str(st.session_state.get("api_id", _api_id_default)),
-            st.session_state.get("api_hash", _api_hash_default),
-            force_new=False,
-        )
-        if ok:
-            st.sidebar.success(f"Connected {phone}")
-            st.rerun()
-        else:
-            st.sidebar.warning("Not authorized — enter OTP below.")
-    except Exception as exc:
-        st.sidebar.error(str(exc))
-
-if st.session_state.get("_sess_disconnect"):
-    phone = st.session_state.pop("_sess_disconnect")
-    run_until_complete(disconnect_telegram_client(phone))
-    if st.session_state.get("phone") == phone:
-        for key in ("client", "auth", "phone_hash"):
-            st.session_state.pop(key, None)
-        st.session_state.auth = False
-    st.sidebar.info(f"Disconnected {phone}")
-
-if st.session_state.get("_sess_delete"):
-    phone = st.session_state.pop("_sess_delete")
-    if st.session_state.get("phone") == phone:
-        run_until_complete(disconnect_telegram_client(phone))
-        for key in ("client", "auth", "phone_hash"):
-            st.session_state.pop(key, None)
-        st.session_state.auth = False
-    delete_session_files(phone)
-    st.sidebar.warning(f"Deleted session files for {phone}")
-
-#####  LOAD USER DETAILS
 st.write("****Confirm your details to connect to Telegram scraper****")
-
-if st.session_state.get("_auto_reconnect_notice"):
-    st.success(st.session_state.pop("_auto_reconnect_notice"))
-
-saved_phones = list_saved_phones()
-if saved_phones:
-    st.caption("Saved Telegram sessions on this server")
-    selected_saved = st.selectbox(
-        "Reconnect saved phone",
-        options=["— new or other —"] + saved_phones,
-        format_func=lambda x: x if x != "— new or other —" else x,
-    )
-    if selected_saved != "— new or other —":
-        if st.button("Reconnect saved session"):
-            prev_phone = st.session_state.get("phone")
-            if prev_phone and prev_phone != selected_saved:
-                run_until_complete(disconnect_telegram_client(prev_phone))
-            st.session_state.phone = selected_saved
-            st.session_state.api_id = st.session_state.get("api_id", _api_id_default)
-            st.session_state.api_hash = st.session_state.get("api_hash", _api_hash_default)
-            if st.session_state.api_id and st.session_state.api_hash:
-                try:
-                    client = run_until_complete(
-                        create_client(
-                            selected_saved,
-                            st.session_state.api_id,
-                            st.session_state.api_hash,
-                            holder_id=_streamlit_holder_id(),
-                        )
-                    )
-                    st.session_state.client = client
-                    st.session_state.auth = run_until_complete(
-                        is_user_authorized(client)
-                    )
-                    if st.session_state.auth:
-                        touch_session(selected_saved, authorized=True)
-                        st.success(f"Reconnected session for {selected_saved}")
-                        st.rerun()
-                    else:
-                        st.warning("Session file exists but is not authorized. Verify OTP.")
-                except SessionInUseError as exc:
-                    st.error(str(exc))
-                except Exception as exc:
-                    st.error(f"Reconnect failed: {exc}")
-            else:
-                st.warning("Enter API id and API hash below, then click Reconnect again.")
-
-phone_number_input = st.text_input(
-    label="Phone number",
-    value=st.session_state.get("phone", _phone_default),
-    help="International format, e.g. +373...",
+render_telegram_auth_panel(
+    "main",
+    location="main",
+    sessions_container=st.sidebar,
+    actions_container=st.sidebar,
 )
-api_id_input = st.text_input(
-    label="Api id",
-    value=str(st.session_state.get("api_id", _api_id_default)),
-    help="From https://my.telegram.org/apps",
-)
-api_hash_input = st.text_input(
-    label="Api hash",
-    value=st.session_state.get("api_hash", _api_hash_default),
-    help="From https://my.telegram.org/apps",
-)
-col_create, col_disconnect = st.columns(2)
-with col_create:
-    create_client_btn = st.button(label="Create / connect Telegram client")
-with col_disconnect:
-    disconnect_btn = st.button(label="Disconnect current phone")
-
-if disconnect_btn and st.session_state.get("phone"):
-    run_until_complete(disconnect_telegram_client(st.session_state.phone))
-    for key in ("client", "auth", "phone_hash"):
-        st.session_state.pop(key, None)
-    st.session_state.auth = False
-    st.info(f"Disconnected {st.session_state.phone}")
-
-if (
-    create_client_btn
-    and phone_number_input
-    and api_id_input
-    and api_hash_input
-):
-    prev_phone = st.session_state.get("phone")
-    if prev_phone and sanitize_phone(prev_phone) != sanitize_phone(phone_number_input):
-        run_until_complete(disconnect_telegram_client(prev_phone))
-
-    use_force_new = not session_file_exists(phone_number_input)
-    try:
-        if _connect_telegram_phone(
-            phone_number_input,
-            api_id_input,
-            api_hash_input,
-            force_new=use_force_new,
-        ):
-            st.success("Connected with saved authorization.")
-            st.rerun()
-        else:
-            st.session_state.client, st.session_state.phone_hash = run_until_complete(
-                generate_otp(
-                    client_tg=st.session_state.client,
-                    phone_number=phone_number_input,
-                )
-            )
-            st.info("OTP sent. Enter the code below.")
-    except SessionInUseError as exc:
-        st.error(str(exc))
-    except Exception as exc:
-        st.error(f"Could not create Telegram client: {type(exc).__name__}: {exc}")
-        logger.exception("create_client failed")
-
-elif hasattr(st.session_state, "client") and st.session_state.get("phone"):
-    if "auth" not in st.session_state:
-        st.session_state.auth = run_until_complete(
-            is_user_authorized(st.session_state.client)
-        )
-
-secret_code_input = None
-button_verify_code = None
-
-if hasattr(st.session_state, "auth") and not st.session_state.auth:
-    st.write("**Enter your secret code to authorize**")
-    secret_code_input = st.text_input(label="Secret code", help="Telegram OTP")
-    button_verify_code = st.button(label="Verify secret code")
-
-if (
-    hasattr(st.session_state, "auth")
-    and not st.session_state.auth
-    and button_verify_code
-    and secret_code_input
-    and hasattr(st.session_state, "client")
-):
-    try:
-        run_until_complete(
-            verify_otp(
-                st.session_state.client,
-                st.session_state.phone,
-                secret_code_input,
-                st.session_state.phone_hash,
-            )
-        )
-        st.session_state.auth = True
-        touch_session(st.session_state.phone, authorized=True)
-        path = session_file_path(st.session_state.phone)
-        if path.is_file() and path.read_text(encoding="utf-8").strip():
-            st.success(
-                f"Telegram authorized. Session saved to `{path}` "
-                "(survives page refresh)."
-            )
-        else:
-            st.warning(
-                "Telegram authorized in memory, but the session file was not "
-                "written. Check permissions on the sessions directory."
-            )
-        st.rerun()
-    except Exception as exc:
-        st.error(f"OTP verification failed: {exc}")
-
-if st.session_state.get("auth") and st.session_state.get("phone"):
-    path = session_file_path(st.session_state.phone)
-    if path.is_file() and path.read_text(encoding="utf-8").strip():
-        st.caption(f"Session file: `{path}`")
-    elif st.session_state.get("auth"):
-        st.warning(
-            "Authorized in memory but no session file on disk — "
-            "click **Create / connect** again or re-verify OTP."
-        )
 
 st.markdown(
     """<hr style="height:2px;border:none;color:#222;background-color:#222;" /> """,
@@ -818,13 +591,16 @@ if button_clicked_fetch_messages and _require_telegram_client():
         st.error("Enter how many messages to fetch (a positive number).")
     else:
         try:
-            inserted, skipped, group_title, resolved = _run_extract_with_progress(
+            fetch_result = _run_extract_with_progress(
                 lambda on_progress: fetch_group_messages(
                     st.session_state.client,
                     group_id,
                     int(n_of_messages_input),
                     on_progress=on_progress,
                 )
+            )
+            inserted, skipped, group_title, resolved = _unpack_messages_fetch(
+                fetch_result, group_id
             )
         except Exception as exc:
             _show_telegram_group_error("fetch messages", group_id, exc)
@@ -845,8 +621,8 @@ if button_clicked_extract_users and _require_telegram_client():
     if not group_id:
         st.error("Enter a group @username or t.me link before extracting users.")
     else:
-        group_ref = normalize_telegram_group_ref(group_id)
-        pending = GraphManager.count_group_messages(group_ref)["unprocessed"]
+        msg_counts = _message_counts_for_input(group_id)
+        pending = msg_counts["unprocessed"]
         if pending == 0:
             st.info(
                 "No unprocessed messages for this group. Use **Fetch messages from group** first."
@@ -901,22 +677,23 @@ if button_clicked_extract_endorsements and _require_telegram_client():
     if not group_id:
         st.error("Enter a group @username or t.me link before extracting endorsements.")
     else:
-        group_ref = normalize_telegram_group_ref(group_id)
-        pending_links = GraphManager.count_group_messages(group_ref).get(
-            "links_unprocessed", 0
-        )
+        msg_counts = _message_counts_for_input(group_id)
+        pending_links = msg_counts.get("links_unprocessed", 0)
         if pending_links == 0:
             st.info(
                 "No messages pending link extraction. Fetch messages with text first."
             )
         else:
             try:
-                inserted, total_links, resolved = _run_extract_with_progress(
-                    lambda on_progress: extract_endorsements_from_stored_messages(
+                endorse_result = _run_extract_with_progress(
+                    lambda on_progress: _call_extract_endorsements(
                         st.session_state.client,
                         group_id,
-                        on_progress=on_progress,
+                        on_progress,
                     )
+                )
+                inserted, total_links, resolved = _unpack_endorsements_fetch(
+                    endorse_result, group_id
                 )
             except Exception as exc:
                 _show_telegram_group_error("extract endorsements", group_id, exc)
@@ -962,7 +739,7 @@ def show_static(fig):
 
 def show_interact(G):
     graph_html, nt = get_graph(G)
-    st.components.v1.html(graph_html, width=1000, height=750)
+    st.html(graph_html, width=1000, unsafe_allow_javascript=True)
     st.divider()
 
 

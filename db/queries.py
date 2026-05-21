@@ -367,6 +367,264 @@ query_dict = {
         CREATE CONSTRAINT group_id_unique IF NOT EXISTS
         FOR (g:Group) REQUIRE g.id IS UNIQUE
         """,
+    "ensure_incident_constraints": """
+        CREATE CONSTRAINT incident_id_unique IF NOT EXISTS
+        FOR (i:Incident) REQUIRE i.id IS UNIQUE
+        """,
+    "ensure_watchlist_channel_ref_unique": """
+        CREATE CONSTRAINT watchlist_channel_ref_unique IF NOT EXISTS
+        FOR (w:WatchlistChannel) REQUIRE w.channel_ref IS UNIQUE
+        """,
+    "ensure_incident_monitor_config_id": """
+        CREATE CONSTRAINT incident_monitor_config_id IF NOT EXISTS
+        FOR (c:IncidentMonitorConfig) REQUIRE c.id IS UNIQUE
+        """,
+    "upsert_incident_monitor_config": """
+        MERGE (c:IncidentMonitorConfig {id: 'default'})
+        SET c.global_keywords = coalesce($global_keywords, c.global_keywords, []),
+            c.global_keywords_enabled = coalesce($global_keywords_enabled, c.global_keywords_enabled, false),
+            c.fetch_interval_sec = coalesce($fetch_interval_sec, c.fetch_interval_sec, 300),
+            c.scheduler_enabled = coalesce($scheduler_enabled, c.scheduler_enabled, false),
+            c.last_fetch_at = coalesce($last_fetch_at, c.last_fetch_at),
+            c.run_pipeline_after_fetch = coalesce($run_pipeline_after_fetch, c.run_pipeline_after_fetch, true),
+            c.updated_at = $updated_at
+        RETURN c
+        """,
+    "get_incident_monitor_config": """
+        MERGE (c:IncidentMonitorConfig {id: 'default'})
+        ON CREATE SET
+            c.global_keywords = [],
+            c.global_keywords_enabled = false,
+            c.fetch_interval_sec = 300,
+            c.scheduler_enabled = false,
+            c.run_pipeline_after_fetch = true
+        RETURN c.id AS id,
+               coalesce(c.global_keywords, []) AS global_keywords,
+               coalesce(c.global_keywords_enabled, false) AS global_keywords_enabled,
+               coalesce(c.fetch_interval_sec, 300) AS fetch_interval_sec,
+               coalesce(c.scheduler_enabled, false) AS scheduler_enabled,
+               c.last_fetch_at AS last_fetch_at,
+               coalesce(c.run_pipeline_after_fetch, true) AS run_pipeline_after_fetch
+        """,
+    "upsert_watchlist_channel": """
+        MERGE (w:WatchlistChannel {channel_ref: $channel_ref})
+        SET w.enabled = coalesce($enabled, w.enabled, true),
+            w.title = coalesce($title, w.title),
+            w.last_polled_at = coalesce($last_polled_at, w.last_polled_at),
+            w.last_message_id = coalesce($last_message_id, w.last_message_id),
+            w.keywords = coalesce($keywords, w.keywords, []),
+            w.keywords_enabled = coalesce($keywords_enabled, w.keywords_enabled, false),
+            w.use_global_keywords = coalesce($use_global_keywords, w.use_global_keywords, true),
+            w.updated_at = $updated_at
+        RETURN w.channel_ref AS channel_ref
+        """,
+    "list_watchlist_channels": """
+        MATCH (w:WatchlistChannel)
+        RETURN w.channel_ref AS channel_ref,
+               coalesce(w.enabled, true) AS enabled,
+               w.title AS title,
+               w.last_polled_at AS last_polled_at,
+               w.last_message_id AS last_message_id,
+               coalesce(w.keywords, []) AS keywords,
+               coalesce(w.keywords_enabled, false) AS keywords_enabled,
+               coalesce(w.use_global_keywords, true) AS use_global_keywords
+        ORDER BY w.channel_ref
+        """,
+    "get_watchlist_channel": """
+        MATCH (w:WatchlistChannel {channel_ref: $channel_ref})
+        RETURN w.channel_ref AS channel_ref,
+               coalesce(w.enabled, true) AS enabled,
+               coalesce(w.keywords, []) AS keywords,
+               coalesce(w.keywords_enabled, false) AS keywords_enabled,
+               coalesce(w.use_global_keywords, true) AS use_global_keywords
+        """,
+    "delete_watchlist_channel": """
+        MATCH (w:WatchlistChannel {channel_ref: $channel_ref})
+        DETACH DELETE w
+        """,
+    "messages_pending_keyword_prefilter": """
+        MATCH (m:Message)
+        WHERE m.text IS NOT NULL AND trim(m.text) <> ''
+          AND coalesce(m.incident_checked, 0) = 0
+          AND coalesce(m.incident_pipeline_stage, 'new') IN ['new', 'ingested', '']
+        RETURN m.group_id AS group_id,
+               m.message_id AS message_id,
+               m.text AS text,
+               m.date AS date
+        ORDER BY m.date DESC
+        LIMIT $limit
+        """,
+    "messages_pending_clean": """
+        MATCH (m:Message)
+        WHERE m.text IS NOT NULL AND trim(m.text) <> ''
+          AND m.incident_pipeline_stage = 'keyword_passed'
+          AND (m.text_clean IS NULL OR trim(m.text_clean) = '')
+        RETURN m.group_id AS group_id,
+               m.message_id AS message_id,
+               m.text AS text,
+               m.date AS date
+        ORDER BY m.date DESC
+        LIMIT $limit
+        """,
+    "messages_pending_filter": """
+        MATCH (m:Message)
+        WHERE m.text_clean IS NOT NULL AND trim(m.text_clean) <> ''
+          AND coalesce(m.incident_checked, 0) = 0
+        RETURN m.group_id AS group_id,
+               m.message_id AS message_id,
+               m.text_clean AS text_clean,
+               m.date AS date
+        ORDER BY m.date DESC
+        LIMIT $limit
+        """,
+    "messages_pending_dedupe": """
+        MATCH (m:Message)
+        WHERE m.incident_checked = 1
+          AND coalesce(m.incident_processed, 0) = 0
+        RETURN m.group_id AS group_id,
+               m.message_id AS message_id,
+               m.text_clean AS text_clean,
+               m.date AS date
+        ORDER BY m.date
+        LIMIT $limit
+        """,
+    "messages_pending_extract": """
+        MATCH (m:Message)
+        WHERE m.incident_checked = 1
+          AND m.incident_processed = 1
+          AND (m.category IS NULL OR trim(m.category) = '')
+        RETURN m.group_id AS group_id,
+               m.message_id AS message_id,
+               m.text_clean AS text_clean,
+               m.date AS date
+        ORDER BY m.date DESC
+        LIMIT $limit
+        """,
+    "messages_pending_geocode": """
+        MATCH (m:Message)
+        WHERE m.incident_checked = 1
+          AND m.incident_processed = 1
+          AND m.category IS NOT NULL AND trim(m.category) <> ''
+          AND m.location_text IS NOT NULL AND trim(m.location_text) <> ''
+          AND (m.lat IS NULL OR m.lon IS NULL)
+        RETURN m.group_id AS group_id,
+               m.message_id AS message_id,
+               m.text_clean AS text_clean,
+               m.category AS category,
+               m.location_text AS location_text,
+               m.date AS date
+        ORDER BY m.date DESC
+        LIMIT $limit
+        """,
+    "messages_pending_incident_link": """
+        MATCH (m:Message)
+        WHERE m.incident_checked = 1
+          AND m.incident_processed = 1
+          AND m.lat IS NOT NULL AND m.lon IS NOT NULL
+          AND NOT (m)-[:REPORTS]->(:Incident)
+        RETURN m.group_id AS group_id,
+               m.message_id AS message_id,
+               m.text_clean AS text_clean,
+               m.category AS category,
+               m.location_text AS location_text,
+               m.lat AS lat,
+               m.lon AS lon,
+               m.date AS date
+        ORDER BY m.date DESC
+        LIMIT $limit
+        """,
+    "update_message_incident_fields": """
+        MATCH (m:Message {group_id: $group_id, message_id: $message_id})
+        SET m.text_clean = coalesce($text_clean, m.text_clean),
+            m.incident_checked = coalesce($incident_checked, m.incident_checked),
+            m.incident_processed = coalesce($incident_processed, m.incident_processed),
+            m.category = coalesce($category, m.category),
+            m.location_text = coalesce($location_text, m.location_text),
+            m.lat = coalesce($lat, m.lat),
+            m.lon = coalesce($lon, m.lon),
+            m.incident_pipeline_stage = coalesce($pipeline_stage, m.incident_pipeline_stage)
+        RETURN m.message_id AS message_id
+        """,
+    "merge_incident_from_message": """
+        MATCH (m:Message {group_id: $group_id, message_id: $message_id})
+        MERGE (i:Incident {id: $incident_id})
+        ON CREATE SET
+            i.category = $category,
+            i.location_text = $location_text,
+            i.lat = $lat,
+            i.lon = $lon,
+            i.occurred_at = $occurred_at,
+            i.summary = coalesce($summary, m.text_clean),
+            i.dedupe_cluster_id = $dedupe_cluster_id,
+            i.created_at = $created_at,
+            i.source_group_id = $group_id
+        ON MATCH SET
+            i.category = coalesce($category, i.category),
+            i.location_text = coalesce($location_text, i.location_text),
+            i.lat = coalesce($lat, i.lat),
+            i.lon = coalesce($lon, i.lon),
+            i.summary = coalesce($summary, i.summary)
+        MERGE (m)-[:REPORTS]->(i)
+        WITH i, m
+        OPTIONAL MATCH (g:Group {id: m.group_id})
+        FOREACH (_ IN CASE WHEN g IS NOT NULL THEN [1] ELSE [] END |
+            MERGE (i)-[:FROM_CHANNEL]->(g)
+        )
+        RETURN i.id AS incident_id
+        """,
+    "link_message_to_incident": """
+        MATCH (m:Message {group_id: $group_id, message_id: $message_id})
+        MATCH (i:Incident {id: $incident_id})
+        MERGE (m)-[:REPORTS]->(i)
+        SET m.incident_processed = -1
+        RETURN count(m) AS linked
+        """,
+    "incident_pipeline_counts": """
+        MATCH (m:Message)
+        WHERE m.text IS NOT NULL AND trim(m.text) <> ''
+        RETURN
+          sum(CASE WHEN coalesce(m.incident_checked, 0) = 0
+                    AND coalesce(m.incident_pipeline_stage, 'new') IN ['new', 'ingested', '']
+               THEN 1 ELSE 0 END) AS pending_keyword,
+          sum(CASE WHEN m.incident_pipeline_stage = 'keyword_passed'
+                    AND (m.text_clean IS NULL OR trim(m.text_clean) = '')
+               THEN 1 ELSE 0 END) AS pending_clean,
+          sum(CASE WHEN m.text_clean IS NOT NULL AND coalesce(m.incident_checked, 0) = 0 THEN 1 ELSE 0 END) AS pending_filter,
+          sum(CASE WHEN m.incident_checked = 1 AND coalesce(m.incident_processed, 0) = 0 THEN 1 ELSE 0 END) AS pending_dedupe,
+          sum(CASE WHEN m.incident_checked = 1 AND m.incident_processed = 1 AND (m.category IS NULL OR trim(m.category) = '') THEN 1 ELSE 0 END) AS pending_extract,
+          sum(CASE WHEN m.incident_checked = 1 AND m.incident_processed = 1 AND m.category IS NOT NULL AND (m.lat IS NULL OR m.lon IS NULL) THEN 1 ELSE 0 END) AS pending_geocode,
+          sum(CASE WHEN m.incident_checked = 1 AND m.incident_processed = 1 AND m.lat IS NOT NULL AND NOT (m)-[:REPORTS]->(:Incident) THEN 1 ELSE 0 END) AS pending_link
+        """,
+    "list_incidents_for_map": """
+        MATCH (i:Incident)
+        WHERE i.lat IS NOT NULL AND i.lon IS NOT NULL
+          AND ($date_from IS NULL OR i.occurred_at >= $date_from)
+          AND ($date_to IS NULL OR i.occurred_at <= $date_to)
+          AND ($category IS NULL OR i.category = $category)
+        RETURN i.id AS id,
+               i.category AS category,
+               i.location_text AS location_text,
+               i.lat AS lat,
+               i.lon AS lon,
+               i.occurred_at AS occurred_at,
+               i.summary AS summary,
+               i.source_group_id AS source_group_id
+        ORDER BY i.occurred_at DESC
+        LIMIT $limit
+        """,
+    "messages_for_dedupe_by_date": """
+        MATCH (m:Message)
+        WHERE m.incident_checked = 1
+          AND coalesce(m.incident_processed, 0) = 0
+          AND m.date IS NOT NULL
+          AND ($date_prefix IS NULL OR m.date STARTS WITH $date_prefix)
+        RETURN m.group_id AS group_id,
+               m.message_id AS message_id,
+               m.text_clean AS text_clean,
+               m.date AS date
+        ORDER BY m.date
+        LIMIT $limit
+        """,
 }
 
 """     

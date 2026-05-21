@@ -85,7 +85,7 @@ def show_static(fig):
 
 def show_interact(G):
     graph_html, nt = get_graph(G)
-    st.components.v1.html(graph_html, width=1000, height=750)
+    st.html(graph_html, width=1000, unsafe_allow_javascript=True)
     st.divider()
 
 

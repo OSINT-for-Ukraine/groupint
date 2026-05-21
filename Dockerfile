@@ -1,15 +1,22 @@
 FROM python:3.11
-WORKDIR /app 
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY pyproject.toml poetry.lock README.md ./
+COPY core ./core
+COPY db ./db
+COPY models.py main.py ./
+RUN python3.11 -m pip install --no-cache-dir .
+
 COPY . .
 
-RUN curl -sSL https://install.python-poetry.org | python3 -
 RUN set -ex \
-    # Create a non-root user with a writable home (Streamlit writes ~/.streamlit)
     && addgroup --system --gid 1001 appgroup \
     && adduser --system --uid 1001 --gid 1001 --home /home/appuser appuser \
-    && mkdir -p /home/appuser/.streamlit \
-    && chown -R appuser:appgroup /home/appuser \
-    && python3.11 -m pip install .
+    && mkdir -p /home/appuser/.streamlit /home/appuser/.groupint/sessions \
+    && chown -R appuser:appgroup /home/appuser /app
 
 ENV HOME=/home/appuser
 
