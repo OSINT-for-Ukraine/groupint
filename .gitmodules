@@ -1,0 +1,4 @@
+[submodule "vendor/atlos"]
+	path = vendor/atlos
+	url = https://github.com/atlosdotorg/atlos.git
+	shallow = true

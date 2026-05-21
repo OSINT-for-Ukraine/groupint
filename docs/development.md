@@ -73,7 +73,7 @@ Do not commit `.env`, `secrets.toml`, session files, or API keys.
 
 ## Internal knowledge base
 
-Maintainer notes: `llm-wiki-vault/wiki/` (Obsidian-style). Public user docs: [`docs/index.md`](index.md).
+User documentation: [`docs/index.md`](index.md).
 
 ## Related
 

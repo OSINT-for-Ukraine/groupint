@@ -9,9 +9,26 @@ from datetime import date, datetime, timedelta, timezone
 import folium
 import streamlit as st
 
-from core.incidents.config import apply_incidents_secrets, llm_provider, poll_interval_sec
+from core.incidents.atlos_export import (
+    atlos_config,
+    export_incidents_batch,
+    normalize_base_url,
+    test_atlos_connection,
+)
+from core.incidents.config import (
+    apply_atlos_secrets,
+    apply_incidents_secrets,
+    default_atlos_api_token,
+    default_atlos_base_url,
+    llm_provider,
+    poll_interval_sec,
+)
 from core.incidents.geojson import incidents_to_geojson_str, incidents_to_json_str
 from core.incidents.keywords import parse_keyword_lines
+from core.incidents.watchlist_channels import (
+    parse_channel_lines,
+    parse_channels_from_upload,
+)
 from core.incidents.monitor import fetch_watchlist_now
 from core.incidents.pipeline import run_pending_pipeline
 from core.incidents.report import generate_incident_report
@@ -21,6 +38,7 @@ from db.dal import GraphManager
 from streamlit_utils.telegram_auth import get_page_client, render_telegram_auth_panel
 
 apply_incidents_secrets()
+apply_atlos_secrets()
 
 try:
     st.set_page_config(page_title="Incidents", layout="wide")
@@ -187,6 +205,14 @@ st.divider()
 
 # --- Watchlist ---
 st.header("Watchlist channels")
+
+
+def _bulk_add_channels(refs: list[str], *, enabled: bool) -> int:
+    for ref in refs:
+        GraphManager.upsert_watchlist_channel(ref, enabled=enabled)
+    return len(refs)
+
+
 col_add, col_en = st.columns([3, 1])
 with col_add:
     new_channel = st.text_input(
@@ -202,6 +228,45 @@ if st.button("Add to watchlist", key="btn_add_watchlist") and new_channel.strip(
     GraphManager.upsert_watchlist_channel(ref, enabled=enabled_default)
     st.success(f"Added `{ref}`")
     st.rerun()
+
+with st.expander("Add multiple channels (paste or upload)", expanded=False):
+    st.caption(
+        "One channel per line, or separated by commas. "
+        "Supports @name, username, or https://t.me/… links. "
+        "Upload `.txt`, `.csv` (first column or header `channel_ref`), or `.json` (array of strings)."
+    )
+    bulk_text = st.text_area(
+        "Paste channel list",
+        height=120,
+        placeholder="OsintTV\n@channel2\nhttps://t.me/channel3",
+        key="watchlist_bulk_text",
+    )
+    bulk_file = st.file_uploader(
+        "Or upload a file",
+        type=["txt", "csv", "json"],
+        key="watchlist_bulk_file",
+    )
+    bulk_enabled = st.checkbox(
+        "Enabled for new channels",
+        value=True,
+        key="watchlist_bulk_enabled",
+    )
+    if st.button("Add all to watchlist", key="btn_bulk_watchlist"):
+        refs: list[str] = []
+        if bulk_file is not None:
+            try:
+                refs = parse_channels_from_upload(bulk_file)
+            except Exception as exc:
+                st.error(f"Could not read file: {exc}")
+        pasted = parse_channel_lines(bulk_text) if bulk_text.strip() else []
+        if pasted:
+            refs = list(dict.fromkeys(refs + pasted))
+        if not refs:
+            st.warning("No channels found. Paste or upload a list first.")
+        else:
+            n = _bulk_add_channels(refs, enabled=bulk_enabled)
+            st.success(f"Added **{n}** channel(s) to the watchlist.")
+            st.rerun()
 
 channels = GraphManager.list_watchlist_channels()
 if channels:
@@ -380,6 +445,108 @@ if incidents:
         file_name="incidents.csv",
         mime="text/csv",
     )
+
+    st.divider()
+    st.subheader("Export to Atlos")
+    st.caption(
+        "Push filtered incidents to Atlos via API v2. "
+        "Local stack default: `http://atlos:4000` (Docker). "
+        "Browser UI: http://localhost:13000 — create token under Project → Access."
+    )
+    monitor_cfg = GraphManager.get_incident_monitor_config()
+    env_base = default_atlos_base_url()
+    env_token = default_atlos_api_token()
+    saved_base = monitor_cfg.get("atlos_base_url") or env_base
+    saved_token = monitor_cfg.get("atlos_api_token") or env_token
+
+    preset = st.selectbox(
+        "URL preset",
+        ["Local Docker (atlos:4000)", "Cloud (platform.atlos.org)", "Custom"],
+        key="atlos_url_preset",
+    )
+    preset_urls = {
+        "Local Docker (atlos:4000)": "http://atlos:4000",
+        "Cloud (platform.atlos.org)": "https://platform.atlos.org",
+    }
+    default_url = preset_urls.get(preset, saved_base)
+
+    ac1, ac2 = st.columns(2)
+    with ac1:
+        atlos_url_input = st.text_input(
+            "Atlos API base URL",
+            value=default_url if preset != "Custom" else saved_base,
+            key="atlos_base_url_input",
+        )
+    with ac2:
+        atlos_token_input = st.text_input(
+            "Atlos API token",
+            value=saved_token,
+            type="password",
+            key="atlos_token_input",
+        )
+
+    skip_exported = st.checkbox(
+        "Skip incidents already exported to Atlos",
+        value=True,
+        key="atlos_skip_exported",
+    )
+    sc1, sc2, sc3 = st.columns(3)
+    with sc1:
+        if st.button("Save Atlos settings", key="btn_save_atlos"):
+            GraphManager.upsert_incident_monitor_config(
+                atlos_base_url=normalize_base_url(atlos_url_input),
+                atlos_api_token=atlos_token_input.strip(),
+            )
+            st.success("Atlos settings saved.")
+            st.rerun()
+    with sc2:
+        if st.button("Reset to .env defaults", key="btn_atlos_reset"):
+            GraphManager.upsert_incident_monitor_config(
+                atlos_base_url=env_base,
+                atlos_api_token=env_token,
+            )
+            st.rerun()
+    with sc3:
+        if st.button("Test Atlos connection", key="btn_atlos_test"):
+            cfg = atlos_config()
+            ok, msg = test_atlos_connection(
+                atlos_url_input or cfg["base_url"],
+                atlos_token_input or cfg["api_token"],
+            )
+            if ok:
+                st.success(msg)
+            else:
+                st.error(msg)
+
+    if st.button("Export filtered incidents to Atlos", type="primary", key="btn_atlos_export"):
+        cfg = atlos_config()
+        base = normalize_base_url(atlos_url_input) or cfg["base_url"]
+        token = (atlos_token_input or cfg["api_token"]).strip()
+        if not token:
+            st.error("Set an Atlos API token before exporting.")
+        else:
+            to_export = GraphManager.list_incidents_for_export(
+                date_from=date_from_s,
+                date_to=date_to_s,
+                category=cat,
+                skip_exported=skip_exported,
+            )
+            with st.spinner(f"Exporting {len(to_export)} incident(s)…"):
+                result = export_incidents_batch(
+                    to_export,
+                    base_url=base,
+                    api_token=token,
+                    skip_exported=skip_exported,
+                )
+            st.success(
+                f"Created **{result['created']}**, skipped **{result['skipped']}**, "
+                f"failed **{result['failed']}**"
+            )
+            if result.get("errors"):
+                with st.expander("Export errors"):
+                    for err in result["errors"][:50]:
+                        st.write(err)
+            st.rerun()
 else:
     st.info("No geocoded incidents in this range. Run the pipeline after fetching messages.")
 

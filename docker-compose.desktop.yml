@@ -1,8 +1,10 @@
-# Docker Desktop stack (see scripts/up-desktop.sh).
+# Docker Desktop stack (see scripts/up-desktop.sh or scripts/up-full.sh with Atlos).
 services:
   neo4j:
     container_name: ${APP_NAME}-neo4j
     image: neo4j
+    networks:
+      - groupint-net
     # Host 7474/7473 are often held by stale docker-proxy; use high ports unless you cleared them.
     ports:
       - "17474:7474"
@@ -43,7 +45,11 @@ services:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}
+      - ATLOS_BASE_URL=${ATLOS_BASE_URL:-http://atlos:4000}
+      - ATLOS_API_TOKEN=${ATLOS_API_TOKEN:-}
     restart: always
+    networks:
+      - groupint-net
     # Host 8501 is often held by a stale docker-proxy from an old run; use 18501 or restart Docker.
     ports:
       - "18501:8501"
@@ -52,6 +58,8 @@ services:
       - groupint-telegram-session:/home/appuser/.groupint
     depends_on:
       - neo4j
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
   incident-worker:
     container_name: groupint-incident-worker
     build:
@@ -82,6 +90,13 @@ services:
     depends_on:
       - neo4j
     restart: unless-stopped
+    networks:
+      - groupint-net
+
+networks:
+  groupint-net:
+    name: groupint-net
+    external: true
 
 volumes:
   groupint-telegram-session:

@@ -564,6 +564,8 @@ class GraphManager:
             "run_pipeline_after_fetch": bool(
                 row.get("run_pipeline_after_fetch", True)
             ),
+            "atlos_base_url": row.get("atlos_base_url"),
+            "atlos_api_token": row.get("atlos_api_token"),
         }
 
     @staticmethod
@@ -577,9 +579,46 @@ class GraphManager:
                 "scheduler_enabled": fields.get("scheduler_enabled"),
                 "last_fetch_at": fields.get("last_fetch_at"),
                 "run_pipeline_after_fetch": fields.get("run_pipeline_after_fetch"),
+                "atlos_base_url": fields.get("atlos_base_url"),
+                "atlos_api_token": fields.get("atlos_api_token"),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             },
         )
+
+    @staticmethod
+    def set_incident_atlos_export(incident_id: str, atlos_slug: str) -> None:
+        graph.run(
+            query_dict["set_incident_atlos_export"],
+            {
+                "incident_id": incident_id,
+                "atlos_slug": atlos_slug,
+                "atlos_exported_at": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+
+    @staticmethod
+    def list_incidents_for_export(
+        *,
+        date_from: str | None = None,
+        date_to: str | None = None,
+        category: str | None = None,
+        skip_exported: bool = True,
+        limit: int = 5000,
+    ) -> list[dict]:
+        rows = graph.run(
+            query_dict["list_incidents_for_export"],
+            {
+                "date_from": date_from,
+                "date_to": date_to,
+                "category": category,
+                "skip_exported": skip_exported,
+                "limit": int(limit),
+            },
+        ).data()
+        for row in rows:
+            urls = row.get("source_urls") or []
+            row["source_urls"] = [u for u in urls if u and str(u).strip().startswith("http")]
+        return rows
 
     @staticmethod
     def get_watchlist_channel(channel_ref: str) -> dict | None:

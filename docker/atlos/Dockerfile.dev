@@ -1,0 +1,27 @@
+# Atlos platform dev server (local Waffle files, no AWS). Source: vendor/atlos/platform
+ARG ELIXIR_VERSION=1.18.4
+ARG OTP_VERSION=27.3.4
+ARG DEBIAN_VERSION=bookworm-20250520
+FROM hexpm/elixir:${ELIXIR_VERSION}-erlang-${OTP_VERSION}-debian-${DEBIAN_VERSION}
+
+RUN apt-get update -y && apt-get install -y --no-install-recommends \
+    build-essential git curl gnupg erlang-src erlang-dev \
+    ffmpeg imagemagick python3-full python3-pip python3-poetry \
+    chromium chromium-driver ca-certificates postgresql-client \
+    && curl -sL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY docker/atlos/entrypoint.sh /entrypoint.sh
+COPY docker/atlos/dev.secret.exs /docker-atlos/dev.secret.exs
+RUN chmod +x /entrypoint.sh
+
+# Populated by build context: vendor/atlos/platform (git submodule or clone)
+COPY vendor/atlos/platform/ ./
+
+RUN mix local.hex --force && mix local.rebar --force
+
+EXPOSE 4000
+ENTRYPOINT ["/entrypoint.sh"]

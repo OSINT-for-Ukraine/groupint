@@ -387,6 +387,8 @@ query_dict = {
             c.scheduler_enabled = coalesce($scheduler_enabled, c.scheduler_enabled, false),
             c.last_fetch_at = coalesce($last_fetch_at, c.last_fetch_at),
             c.run_pipeline_after_fetch = coalesce($run_pipeline_after_fetch, c.run_pipeline_after_fetch, true),
+            c.atlos_base_url = coalesce($atlos_base_url, c.atlos_base_url),
+            c.atlos_api_token = coalesce($atlos_api_token, c.atlos_api_token),
             c.updated_at = $updated_at
         RETURN c
         """,
@@ -404,7 +406,37 @@ query_dict = {
                coalesce(c.fetch_interval_sec, 300) AS fetch_interval_sec,
                coalesce(c.scheduler_enabled, false) AS scheduler_enabled,
                c.last_fetch_at AS last_fetch_at,
-               coalesce(c.run_pipeline_after_fetch, true) AS run_pipeline_after_fetch
+               coalesce(c.run_pipeline_after_fetch, true) AS run_pipeline_after_fetch,
+               c.atlos_base_url AS atlos_base_url,
+               c.atlos_api_token AS atlos_api_token
+        """,
+    "set_incident_atlos_export": """
+        MATCH (i:Incident {id: $incident_id})
+        SET i.atlos_slug = $atlos_slug,
+            i.atlos_exported_at = $atlos_exported_at
+        RETURN i.id AS id
+        """,
+    "list_incidents_for_export": """
+        MATCH (i:Incident)
+        WHERE i.lat IS NOT NULL AND i.lon IS NOT NULL
+          AND ($date_from IS NULL OR i.occurred_at >= $date_from)
+          AND ($date_to IS NULL OR i.occurred_at <= $date_to)
+          AND ($category IS NULL OR i.category = $category)
+          AND ($skip_exported = false OR i.atlos_slug IS NULL)
+        OPTIONAL MATCH (m:Message)-[:REPORTS]->(i)
+        WITH i, collect(DISTINCT m.telegram_url) AS urls
+        RETURN i.id AS id,
+               i.category AS category,
+               i.location_text AS location_text,
+               i.lat AS lat,
+               i.lon AS lon,
+               i.occurred_at AS occurred_at,
+               i.summary AS summary,
+               i.source_group_id AS source_group_id,
+               i.atlos_slug AS atlos_slug,
+               urls AS source_urls
+        ORDER BY i.occurred_at DESC
+        LIMIT $limit
         """,
     "upsert_watchlist_channel": """
         MERGE (w:WatchlistChannel {channel_ref: $channel_ref})

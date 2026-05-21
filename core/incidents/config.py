@@ -115,3 +115,35 @@ def apply_incidents_secrets() -> None:
         except Exception:
             pass
         break
+
+
+def default_atlos_base_url() -> str:
+    return (os.environ.get("ATLOS_BASE_URL") or "http://atlos:4000").strip().rstrip("/")
+
+
+def default_atlos_api_token() -> str:
+    return (os.environ.get("ATLOS_API_TOKEN") or "").strip()
+
+
+def apply_atlos_secrets() -> None:
+    """Load [atlos] from secrets.toml into env when not already set."""
+    for path in ("/app/.streamlit/secrets.toml", ".streamlit/secrets.toml"):
+        if not os.path.isfile(path):
+            continue
+        try:
+            import tomllib
+
+            with open(path, "rb") as fh:
+                atlos = tomllib.load(fh).get("atlos") or {}
+            for env_key, secret_key in (
+                ("ATLOS_BASE_URL", "base_url"),
+                ("ATLOS_API_TOKEN", "api_token"),
+            ):
+                if os.environ.get(env_key):
+                    continue
+                val = atlos.get(secret_key)
+                if val is not None and str(val).strip():
+                    os.environ[env_key] = str(val).strip()
+        except Exception:
+            pass
+        break

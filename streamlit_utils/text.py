@@ -28,5 +28,5 @@ Without integer:
 
 Neo4j Browser: http://localhost:17474 — auth **No authentication**, Connect once.
 
-**Gephi (Neo4j plugin):** URL `neo4j://localhost:17687`, **No authentication**, Verify on step 1. Label lists use `CALL db.labels()` (first wizard tab), not the default `MATCH (n) RETURN id, labels` test query. See `llm-wiki-vault/wiki/gephi-neo4j.md`.
+**Gephi (Neo4j plugin):** URL `neo4j://localhost:17687`, **No authentication**, Verify on step 1. Label lists use `CALL db.labels()` (first wizard tab), not the default `MATCH (n) RETURN id, labels` test query. See `docs/neo4j-and-gephi.md` in the repository.
 """

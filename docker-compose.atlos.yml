@@ -1,0 +1,55 @@
+# Atlos local stack (dev mode, PostGIS, local file uploads — no AWS).
+# Use with: ./scripts/up-full.sh
+services:
+  atlos-postgres:
+    container_name: groupint-atlos-postgres
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: ${ATLOS_DB_USER:-atlos}
+      POSTGRES_PASSWORD: ${ATLOS_DB_PASSWORD:-atlos}
+      POSTGRES_DB: ${ATLOS_DB_NAME:-atlos}
+    volumes:
+      - groupint-atlos-pg-data:/var/lib/postgresql/data
+      - ./docker/atlos/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ATLOS_DB_USER:-atlos} -d ${ATLOS_DB_NAME:-atlos}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - groupint-net
+
+  atlos:
+    container_name: groupint-atlos
+    build:
+      context: .
+      dockerfile: docker/atlos/Dockerfile.dev
+    ports:
+      - "13000:4000"
+    environment:
+      MIX_ENV: dev
+      PORT: "4000"
+      PHX_HOST: localhost
+      DEVELOPMENT_MODE: "true"
+      ENABLE_CAPTCHAS: "false"
+    volumes:
+      - groupint-atlos-uploads:/app/priv/uploads
+      - groupint-atlos-build:/app/_build
+      - groupint-atlos-deps:/app/deps
+    depends_on:
+      atlos-postgres:
+        condition: service_healthy
+    networks:
+      - groupint-net
+    restart: unless-stopped
+
+networks:
+  groupint-net:
+    name: groupint-net
+    driver: bridge
+
+volumes:
+  groupint-atlos-pg-data:
+  groupint-atlos-uploads:
+  groupint-atlos-build:
+  groupint-atlos-deps:

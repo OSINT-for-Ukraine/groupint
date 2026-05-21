@@ -3,7 +3,8 @@
 set -e
 cd "$(dirname "$0")/.."
 unset DOCKER_HOST
-docker context use desktop-linux
+docker context use desktop-linux 2>/dev/null || true
+docker network create groupint-net 2>/dev/null || true
 APP_NAME=groupint docker compose -f docker-compose.desktop.yml up -d --build "$@"
 
 echo ""

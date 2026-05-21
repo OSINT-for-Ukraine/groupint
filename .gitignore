@@ -61,3 +61,16 @@ venv
 .idea
 *.session
 *.session-journal
+
+# Local agent knowledge base (not for the public repo)
+llm-wiki-vault/
+
+# Secrets and local environment
+.env
+.streamlit/secrets.toml
+
+# Local lecture drafts
+lectures/
+
+# IDE / Cursor
+.cursor/
