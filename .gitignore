@@ -57,6 +57,9 @@ telethon_details.md
 # Sphinx documentation
 docs/_build/
 
+# Generated documentation bundle
+docs/groupint-manual.md
+
 venv
 .idea
 *.session

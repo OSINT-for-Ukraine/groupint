@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import logging
 
 import streamlit as st
@@ -64,8 +63,6 @@ def _client_key(page_id: str) -> str:
 
 def _ensure_telegram_runtime() -> None:
     sync_streamlit_event_loop()
-    if "event_loop" not in st.session_state:
-        st.session_state.event_loop = asyncio.new_event_loop()
 
 
 def connect_telegram_phone(

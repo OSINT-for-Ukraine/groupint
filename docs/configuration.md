@@ -18,9 +18,11 @@ Groupint reads settings from **environment variables** (`.env`, Docker compose) 
 | `OPENAI_API_KEY` | — | When provider is `openai` |
 | `GOOGLE_MAPS_API_KEY` | — | Geocoding (optional) |
 | `INCIDENT_POLL_INTERVAL_SEC` | `300` | Worker fallback if Neo4j scheduler unset |
-| `ATLOS_BASE_URL` | `http://atlos:4000` | Atlos export (Docker internal hostname) |
-| `ATLOS_API_TOKEN` | — | Atlos export |
-| `ATLOS_DB_*` | — | Atlos compose only (`docker-compose.atlos.yml`) |
+| `ATLOS_BASE_URL` | `http://atlos:4000` | Local Atlos stack (`up-full.sh`); not required for cloud CSV import |
+| `ATLOS_API_TOKEN` | — | Reserved for future API export (`core/incidents/atlos_export.py`) |
+| `ATLOS_DB_USER` | `atlos` | Atlos compose only (`docker-compose.atlos.yml`) |
+| `ATLOS_DB_PASSWORD` | `atlos` | Atlos compose only |
+| `ATLOS_DB_NAME` | `atlos` | Atlos compose only |
 
 Copy from [`.env.example`](../.env.example) in the repository root.
 
@@ -54,7 +56,7 @@ The worker calls `apply_incidents_secrets()` to merge secrets with environment v
 | `base_url` | Atlos platform URL |
 | `api_token` | API token with write permission |
 
-UI settings saved in Neo4j override env/secrets for export. See [Atlos export](incidents/atlos-export.md).
+**Atlos export in the UI** uses CSV download for manual bulk import to cloud Atlos. API push is disabled in the UI; env/secrets below apply to a future API path or local Atlos stack. See [Atlos export](incidents/atlos-export.md).
 
 ## Neo4j scheduler (Incidents UI)
 

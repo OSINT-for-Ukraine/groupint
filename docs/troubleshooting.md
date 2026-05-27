@@ -53,13 +53,15 @@ curl -sf http://localhost:18501/_stcore/health
 | All messages filtered out | Review global/channel keywords; empty list = no filter |
 | Manual fetch works, scheduler does not | Worker needs `TELEGRAM_*` in `.env` or shared session |
 
-## Atlos export
+## Atlos export (CSV bulk import)
 
 | Symptom | Fix |
 |---------|-----|
-| Test connection failed | `up-full.sh` running; token valid; URL `http://atlos:4000` inside Docker |
-| 401 / 403 on export | Token needs write permission on correct project |
-| Incidents skipped | Already have `atlos_slug`; or missing lat/lon from geocode |
+| CSV download empty | Expand date filter; run pipeline; need geocoded lat/lon |
+| Atlos rejects CSV | Headers must be lowercase: `status`, `description`, `sensitive` |
+| Geolocation missing in Atlos | Rename `geolocation` column to match your project attribute in Manage |
+
+API export is disabled in the UI; see [Atlos export](incidents/atlos-export.md).
 
 ## Logs
 

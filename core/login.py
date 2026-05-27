@@ -4,9 +4,18 @@ import nest_asyncio
 import streamlit as st
 
 
+def ensure_event_loop() -> asyncio.AbstractEventLoop:
+    """Create or replace Streamlit session asyncio loop (pages without interface.py)."""
+    loop = st.session_state.get("event_loop")
+    if loop is None or loop.is_closed():
+        loop = asyncio.new_event_loop()
+        st.session_state.event_loop = loop
+    return loop
+
+
 def sync_streamlit_event_loop() -> asyncio.AbstractEventLoop:
     """Bind asyncio to Streamlit's session loop; re-patch nest_asyncio if loop changed."""
-    loop = st.session_state.event_loop
+    loop = ensure_event_loop()
     asyncio.set_event_loop(loop)
     curr = id(loop)
     prev = st.session_state.get("_nest_asyncio_loop_id")

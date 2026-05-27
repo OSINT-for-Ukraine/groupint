@@ -1,0 +1,32 @@
+name: Documentation PDF
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "scripts/merge_docs.py"
+      - "scripts/build-docs.sh"
+      - ".github/workflows/docs-pdf.yaml"
+  workflow_dispatch:
+
+jobs:
+  build-manual:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pandoc and LaTeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc texlive-xetex
+
+      - name: Build documentation
+        run: ./scripts/build-docs.sh
+
+      - name: Upload PDF artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: groupint-manual-pdf
+          path: dist/groupint-manual.pdf
+          if-no-files-found: error

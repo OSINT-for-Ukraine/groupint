@@ -2,6 +2,8 @@
 
 Groupint helps investigators map **who talks to whom** in Telegram groups and channels. It is built for OSINT workflows: collect structured data, store it in a graph database, explore relationships visually, and (optionally) run an automated **incident mapping** pipeline on watchlisted channels.
 
+It is developed by [OSINT for Ukraine](https://www.osintforukraine.com/), an independent non-profit using open-source intelligence for accountability, research, and training. You run Groupint on your own infrastructure; it is not a hosted service.
+
 ## Two main surfaces
 
 | Surface | Entry point | Purpose |
@@ -36,7 +38,7 @@ For **channels** (not only groups), the Incidents module:
 2. Prefilters messages by keywords (global and/or per-channel).
 3. Runs LLM stages: clean text, detect incidents, deduplicate, extract category/location, geocode.
 4. Creates `Incident` nodes linked to messages and channels.
-5. Displays a map in Streamlit; exports GeoJSON/JSON/CSV or pushes to **Atlos**.
+5. Displays a map in Streamlit; exports GeoJSON, JSON, CSV, and **Atlos-compatible CSV** for manual bulk import to [platform.atlos.org](https://platform.atlos.org).
 
 See [Incidents overview](incidents/overview.md).
 
@@ -48,7 +50,7 @@ See [Incidents overview](incidents/overview.md).
 | [Streamlit](https://streamlit.io/) | Web UI |
 | [Neo4j](https://neo4j.com/) | Graph storage |
 | [Anthropic](https://www.anthropic.com/) / [OpenAI](https://openai.com/) | Incident LLM (configurable) |
-| [Atlos](https://atlos.org/) | Optional incident platform (API v2 export) |
+| [Atlos](https://atlos.org/) | Optional incident platform (CSV bulk import; API push not enabled in UI) |
 
 ## What Groupint is not
 

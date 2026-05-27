@@ -19,6 +19,8 @@ This tool empowers investigators to analyse networks within specific Telegram co
 
 **Full user guide:** [docs/index.md](docs/index.md)
 
+**Consolidated manual (Markdown + PDF):** run `./scripts/build-docs.sh` to produce `docs/groupint-manual.md` and `dist/groupint-manual.pdf` from all guides under `docs/`. See [docs/index.md](docs/index.md#single-file-manual-and-pdf).
+
 | Topic | Guide |
 |-------|--------|
 | Install and configure | [docs/installation.md](docs/installation.md) |

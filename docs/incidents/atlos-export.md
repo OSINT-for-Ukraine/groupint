@@ -1,81 +1,89 @@
-# Atlos export
+# Atlos export (manual CSV bulk import)
 
-Push geocoded **Incident** nodes from Groupint to [Atlos](https://atlos.org) using [API v2](https://docs.atlos.org/technical/api/).
+Export geocoded **Incident** data from Groupint as a CSV file, then import it manually into [Atlos](https://atlos.org) on the cloud (**https://platform.atlos.org**).
+
+This is the supported workflow today. **API push from Groupint is disabled** in the UI (code remains in `core/incidents/atlos_export.py` for a future release).
 
 ## Prerequisites
 
-- Incidents with coordinates in Neo4j (pipeline completed)
-- Atlos reachable from Groupint (local or cloud)
-- API token with **write** permission on a project
+- Incidents with **lat/lon** on the map (pipeline + geocode completed)
+- An Atlos project where you are **owner or manager** (bulk import permission)
 
-### Local full stack
+## Workflow
 
-```bash
-./scripts/up-full.sh
+```mermaid
+flowchart LR
+  groupint[Groupint Incidents]
+  csvFile[incidents-atlos-import.csv]
+  analyst[Analyst]
+  atlos[platform.atlos.org Manage]
+  groupint --> csvFile
+  analyst --> csvFile
+  analyst --> atlos
 ```
 
-| Service | URL |
-|---------|-----|
-| Groupint | http://localhost:18501 |
-| Atlos (dev) | http://localhost:13000 |
-| Neo4j | http://localhost:17474 |
+1. Open **Incidents** in Groupint (http://localhost:18501).
+2. Set the same **date** and **category** filters as on the map.
+3. Under **Export for Atlos (manual bulk import)**:
+   - Choose default **status** and **sensitive** values if needed.
+   - Click **Download CSV for Atlos bulk import**.
+4. On Atlos:
+   - Open your project → **Manage**.
+   - Scroll to **Bulk import** → **Upload a file**.
+   - Review the preview → **Publish to Atlos**.
 
-Atlos runs without AWS (`MIX_ENV=dev`, local file storage). See [Docker: full stack with Atlos](../docker/full-stack-with-atlos.md).
+Official Atlos guide: [Import and export data](https://docs.atlos.org/investigations/import-and-export-data/).
 
-## Create an API token
+## CSV columns
 
-1. Open Atlos in the browser.
-2. Log in to your project.
-3. **Access** → **API Tokens** → create token with write permission.
-4. Set in Groupint:
-   - `.env`: `ATLOS_API_TOKEN=...`
-   - Or Incidents page → **Export to Atlos** → **Save Atlos settings** (stored in Neo4j)
+Groupint writes these headers (lowercase — Atlos is case-sensitive):
 
-## UI: Export to Atlos
+| Column | Required | Content |
+|--------|----------|---------|
+| `status` | Yes | Default `To Do` (configurable in UI: To Do, Unclaimed, In Progress) |
+| `description` | Yes | Category, location, summary, date (min. 8 characters) |
+| `sensitive` | Yes | Default `Not Sensitive` (editable in UI) |
+| `geolocation` | No | `latitude,longitude` e.g. `49.9935,36.2304` |
 
-On the Incidents page, section **Export to Atlos**:
+Optional Atlos columns (tags, urls, custom attributes) depend on your **project data model**. Check column names on the **Bulk import** section of your project **Manage** page if `geolocation` is not recognized — rename the column in Excel/Sheets to match your project’s geolocation attribute API id.
 
-| Field | Default | Notes |
-|-------|---------|--------|
-| Base URL | `http://atlos:4000` | In-container hostname on `groupint-net` |
-| API token | from env | Editable in UI |
+Only incidents **with coordinates** matching the current map filters are included (same set as the Folium map).
 
-**Presets:**
+## Example row
 
-- **Local Docker** — `http://atlos:4000`
-- **Cloud** — `https://platform.atlos.org`
-- **Custom** — your instance URL
+```csv
+status,description,sensitive,geolocation
+To Do,"[shelling] Kharkiv oblast
 
-**Buttons:**
+Drone strike reported near...
 
-| Button | Action |
-|--------|--------|
-| Save Atlos settings | Persist URL/token to Neo4j `IncidentMonitorConfig` |
-| Reset to .env defaults | Clear saved overrides |
-| Test Atlos connection | HTTP check against Atlos API |
-| Export filtered incidents to Atlos | POST incidents matching current map filters |
-
-Resolution order: Neo4j saved values → `.env` / `secrets.toml` `[atlos]`.
-
-## Export behavior
-
-- Uses the same date/category filters as the incident map.
-- `POST /api/v2/incidents/new` with description, geolocation, tags, optional source URLs.
-- Sets `atlos_slug` on `Incident` nodes that exported successfully — skips re-export on next run.
-- Errors shown in an expander per failed row.
-
-Code: `core/incidents/atlos_export.py`, UI in `pages/2_Incidents.py`.
-
-## Environment variables
-
-```bash
-ATLOS_BASE_URL=http://atlos:4000
-ATLOS_API_TOKEN=your_token
+Occurred: 2024-06-01",Not Sensitive,49.9935,36.2304
 ```
 
-For host-only Groupint without Docker network, use `http://localhost:13000` if Atlos publishes port 13000.
+## Code
 
-## Next steps
+- CSV builder: `core/incidents/atlos_csv_export.py`
+- UI: `pages/2_Incidents.py` — section **Export for Atlos (manual bulk import)**
+- Tests: `tests/test_atlos_csv_export.py`
+
+## API export (disabled)
+
+Automatic export via Atlos API v2 (`POST /api/v2/incidents/new`) is implemented in `core/incidents/atlos_export.py` but **not exposed** in the Incidents UI. To re-enable later, set `ATLOS_API_EXPORT_ENABLED = True` in `pages/2_Incidents.py` and configure `ATLOS_API_TOKEN` / Neo4j Atlos settings.
+
+For a local Atlos dev stack (optional, not required for cloud import), see [Docker: full stack with Atlos](../docker/full-stack-with-atlos.md).
+
+## Troubleshooting
+
+| Problem | What to do |
+|---------|------------|
+| CSV empty | Widen date range; run pipeline; ensure incidents have lat/lon |
+| Bulk import fails on headers | Use exact lowercase: `status`, `description`, `sensitive` |
+| Geolocation not imported | Match column name to your Atlos project attributes in Manage |
+| `sensitive` parse error | Quote values that contain commas (Groupint CSV uses standard quoting) |
+
+See also [Troubleshooting](../troubleshooting.md).
+
+## Related
 
 - [Incidents overview](overview.md)
-- [Troubleshooting](../troubleshooting.md) — connection and token errors
+- [Incident map filters](overview.md#typical-workflow)

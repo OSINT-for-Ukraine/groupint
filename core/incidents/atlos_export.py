@@ -1,4 +1,8 @@
-"""Export Groupint incidents to Atlos API v2."""
+"""Export Groupint incidents to Atlos API v2.
+
+Not used by the Incidents UI while API export is disabled; prefer
+core.incidents.atlos_csv_export for manual bulk import to cloud Atlos.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +13,7 @@ from urllib.parse import urljoin
 
 import httpx
 
+from core.incidents.atlos_csv_export import build_incident_description, format_geolocation
 from core.incidents.config import (
     apply_atlos_secrets,
     default_atlos_api_token,
@@ -44,31 +49,16 @@ def incident_to_atlos_payload(
     status: str = DEFAULT_STATUS,
 ) -> dict[str, Any]:
     category = (inc.get("category") or "other").strip()
-    location = (inc.get("location_text") or "").strip()
-    summary = (inc.get("summary") or "").strip()
-    occurred = inc.get("occurred_at") or ""
-    parts = [f"[{category}]"]
-    if location:
-        parts.append(location)
-    if summary:
-        parts.append(summary)
-    if occurred:
-        parts.append(f"Occurred: {occurred}")
-    description = "\n\n".join(parts).strip()
-    if len(description) < 8:
-        description = (description + " — Groupint OSINT incident export").strip()
-        if len(description) < 8:
-            description = "Groupint OSINT incident export."
-
+    description = build_incident_description(inc)
     payload: dict[str, Any] = {
         "description": description,
         "sensitive": sensitive or DEFAULT_SENSITIVE,
         "status": status,
         "tags": [category],
     }
-    lat, lon = inc.get("lat"), inc.get("lon")
-    if lat is not None and lon is not None:
-        payload["geolocation"] = f"{float(lat)},{float(lon)}"
+    geo = format_geolocation(inc)
+    if geo:
+        payload["geolocation"] = geo
     urls = []
     for u in inc.get("source_urls") or []:
         s = str(u).strip()

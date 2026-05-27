@@ -35,7 +35,7 @@ Ensure Neo4j is reachable and `NEO4J_URI` is set in `.env`.
 poetry run pytest
 ```
 
-Example incident tests: `tests/test_atlos_export.py`, `tests/test_watchlist_channels.py`.
+Example incident tests: `tests/test_atlos_csv_export.py`, `tests/test_atlos_export.py`, `tests/test_watchlist_channels.py`.
 
 ## Docker during development
 
@@ -70,6 +70,40 @@ docker restart groupint-streamlit
 5. Wait for CI and review.
 
 Do not commit `.env`, `secrets.toml`, session files, or API keys.
+
+## Building documentation
+
+Modular sources live under `docs/`. To build a single manual and PDF:
+
+```bash
+./scripts/build-docs.sh
+```
+
+| Output | Path |
+|--------|------|
+| Merged Markdown | `docs/groupint-manual.md` |
+| PDF | `dist/groupint-manual.pdf` |
+
+**Prerequisites for PDF:**
+
+- [pandoc](https://pandoc.org/)
+- A LaTeX PDF engine: `texlive-xetex` / `texlive-basic` (Debian/Arch), or [tectonic](https://tectonic-typesetting.github.io/)
+
+```bash
+# Arch / Manjaro
+sudo pacman -S pandoc texlive-basic
+
+# Debian / Ubuntu
+sudo apt install pandoc texlive-xetex
+```
+
+Merge only (skip PDF if pandoc is not installed, or force skip):
+
+```bash
+BUILD_DOCS_PDF=0 ./scripts/build-docs.sh
+```
+
+Edit the chapter list in `scripts/merge_docs.py` when adding new guides. CI uploads `dist/groupint-manual.pdf` as a workflow artifact on pushes to `main`.
 
 ## Internal knowledge base
 
