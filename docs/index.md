@@ -6,16 +6,18 @@ This documentation covers installation, Docker deployment, Telegram authenticati
 
 ## Quick links
 
-| Task | Guide |
-|------|--------|
-| First-time setup | [Installation](installation.md) |
-| Run with Docker | [Desktop stack](docker/desktop-stack.md) |
-| Connect Telegram | [Sessions and auth](telegram/sessions-and-auth.md) |
-| Scrape a group | [Main application](main-application.md) |
-| Monitor channels for incidents | [Incidents overview](incidents/overview.md) |
-| Export to Atlos (CSV) | [Atlos export](incidents/atlos-export.md) |
-| Import graph into Gephi | [Neo4j and Gephi](neo4j-and-gephi.md) |
-| Full workflow (Ukrainian) | [Tutorial: Grizzly SMS → Gephi + Claude](tutorial-full-workflow-uk.md) |
+
+| Task                           | Guide                                                                  |
+| ------------------------------ | ---------------------------------------------------------------------- |
+| First-time setup               | [Installation](installation.md)                                        |
+| Run with Docker                | [Desktop stack](docker/desktop-stack.md)                               |
+| Connect Telegram               | [Sessions and auth](telegram/sessions-and-auth.md)                     |
+| Scrape a group                 | [Main application](main-application.md)                                |
+| Monitor channels for incidents | [Incidents overview](incidents/overview.md)                            |
+| Export to Atlos (API)          | [Atlos export](incidents/atlos-export.md)                              |
+| Import graph into Gephi        | [Neo4j and Gephi](neo4j-and-gephi.md)                                  |
+| Full workflow (Ukrainian)      | [Tutorial: Grizzly SMS → Gephi + Claude](tutorial-full-workflow-uk.md) |
+
 
 ## Table of contents
 
@@ -45,7 +47,7 @@ This documentation covers installation, Docker deployment, Telegram authenticati
 - [Incidents overview](incidents/overview.md) — pipeline, Neo4j model, worker
 - [Watchlist and bulk import](incidents/watchlist-and-import.md) — channels, paste/upload lists
 - [Keywords and scheduler](incidents/keywords-and-scheduler.md) — filters and automatic fetch
-- [Atlos export](incidents/atlos-export.md) — CSV for manual bulk import to cloud Atlos
+- [Atlos export](incidents/atlos-export.md) — push incidents via Atlos API v2
 
 ### Advanced
 
@@ -73,6 +75,8 @@ flowchart TB
   streamlit --> atlos
 ```
 
+
+
 ## Single-file manual and PDF
 
 Generate a consolidated manual and printable PDF from the modular guides:
@@ -81,10 +85,12 @@ Generate a consolidated manual and printable PDF from the modular guides:
 ./scripts/build-docs.sh
 ```
 
-| Output | Path |
-|--------|------|
+
+| Output                | Path                                              |
+| --------------------- | ------------------------------------------------- |
 | Consolidated Markdown | `docs/groupint-manual.md` (generated, gitignored) |
-| PDF | `dist/groupint-manual.pdf` (generated) |
+| PDF                   | `dist/groupint-manual.pdf` (generated)            |
+
 
 Requires [pandoc](https://pandoc.org/) and a LaTeX engine (`xelatex`, `pdflatex`, or `tectonic`). See [Development — Building documentation](development.md#building-documentation).
 

@@ -38,7 +38,7 @@ For **channels** (not only groups), the Incidents module:
 2. Prefilters messages by keywords (global and/or per-channel).
 3. Runs LLM stages: clean text, detect incidents, deduplicate, extract category/location, geocode.
 4. Creates `Incident` nodes linked to messages and channels.
-5. Displays a map in Streamlit; exports GeoJSON, JSON, CSV, and **Atlos-compatible CSV** for manual bulk import to [platform.atlos.org](https://platform.atlos.org).
+5. Displays a map in Streamlit; exports GeoJSON, JSON, CSV; optional push to **Atlos** via API.
 
 See [Incidents overview](incidents/overview.md).
 
@@ -50,7 +50,7 @@ See [Incidents overview](incidents/overview.md).
 | [Streamlit](https://streamlit.io/) | Web UI |
 | [Neo4j](https://neo4j.com/) | Graph storage |
 | [Anthropic](https://www.anthropic.com/) / [OpenAI](https://openai.com/) | Incident LLM (configurable) |
-| [Atlos](https://atlos.org/) | Optional incident platform (CSV bulk import; API push not enabled in UI) |
+| [Atlos](https://atlos.org/) | Optional incident platform (API v2 export from Incidents UI) |
 
 ## What Groupint is not
 

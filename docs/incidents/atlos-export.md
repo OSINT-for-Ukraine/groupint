@@ -1,89 +1,73 @@
-# Atlos export (manual CSV bulk import)
+# Atlos export (API)
 
-Export geocoded **Incident** data from Groupint as a CSV file, then import it manually into [Atlos](https://atlos.org) on the cloud (**https://platform.atlos.org**).
-
-This is the supported workflow today. **API push from Groupint is disabled** in the UI (code remains in `core/incidents/atlos_export.py` for a future release).
+Push geocoded **Incident** data from Groupint to [Atlos](https://atlos.org) via API v2 (`POST /api/v2/incidents/new`).
 
 ## Prerequisites
 
-- Incidents with **lat/lon** on the map (pipeline + geocode completed)
-- An Atlos project where you are **owner or manager** (bulk import permission)
+- Incidents with **lat/lon** (pipeline + geocode completed)
+- Atlos API token with permission to create incidents in your project
+- `ATLOS_API_TOKEN` in `.env` and/or saved in the Incidents UI
 
 ## Workflow
 
 ```mermaid
 flowchart LR
   groupint[Groupint Incidents]
-  csvFile[incidents-atlos-import.csv]
-  analyst[Analyst]
-  atlos[platform.atlos.org Manage]
-  groupint --> csvFile
-  analyst --> csvFile
-  analyst --> atlos
+  api[Atlos API v2]
+  atlos[Atlos platform]
+  groupint --> api --> atlos
 ```
 
 1. Open **Incidents** in Groupint (http://localhost:18501).
 2. Set the same **date** and **category** filters as on the map.
-3. Under **Export for Atlos (manual bulk import)**:
-   - Choose default **status** and **sensitive** values if needed.
-   - Click **Download CSV for Atlos bulk import**.
-4. On Atlos:
-   - Open your project → **Manage**.
-   - Scroll to **Bulk import** → **Upload a file**.
-   - Review the preview → **Publish to Atlos**.
+3. Under **Export to Atlos (API)**:
+   - Choose URL preset (local Docker or cloud `https://platform.atlos.org`).
+   - Enter or save **API token** → **Save Atlos settings**.
+   - **Test Atlos connection** (optional).
+   - Click **Export filtered incidents to Atlos**.
 
-Official Atlos guide: [Import and export data](https://docs.atlos.org/investigations/import-and-export-data/).
+For a local Atlos dev stack, see [Docker: full stack with Atlos](../docker/full-stack-with-atlos.md).
 
-## CSV columns
+## Configuration
 
-Groupint writes these headers (lowercase — Atlos is case-sensitive):
+| Source | Variables |
+|--------|-----------|
+| `.env` | `ATLOS_BASE_URL`, `ATLOS_API_TOKEN` |
+| Incidents UI | Saved on `IncidentMonitorConfig` in Neo4j (overrides env) |
+| `secrets.toml` `[atlos]` | Optional defaults |
 
-| Column | Required | Content |
-|--------|----------|---------|
-| `status` | Yes | Default `To Do` (configurable in UI: To Do, Unclaimed, In Progress) |
-| `description` | Yes | Category, location, summary, date (min. 8 characters) |
-| `sensitive` | Yes | Default `Not Sensitive` (editable in UI) |
-| `geolocation` | No | `latitude,longitude` e.g. `49.9935,36.2304` |
+See [Configuration](../configuration.md).
 
-Optional Atlos columns (tags, urls, custom attributes) depend on your **project data model**. Check column names on the **Bulk import** section of your project **Manage** page if `geolocation` is not recognized — rename the column in Excel/Sheets to match your project’s geolocation attribute API id.
+## Payload
 
-Only incidents **with coordinates** matching the current map filters are included (same set as the Folium map).
+Each incident is sent with:
 
-## Example row
+- `description` — category, location, summary, date (min. 8 characters)
+- `status` — default `To Do`
+- `sensitive` — default `Not Sensitive`
+- `tags` — incident category
+- `geolocation` — `latitude,longitude` when lat/lon exist
+- `urls` — Telegram source links when present
 
-```csv
-status,description,sensitive,geolocation
-To Do,"[shelling] Kharkiv oblast
-
-Drone strike reported near...
-
-Occurred: 2024-06-01",Not Sensitive,49.9935,36.2304
-```
+Exported incidents store `atlos_slug` in Neo4j; enable **Skip incidents already exported** to avoid duplicates.
 
 ## Code
 
-- CSV builder: `core/incidents/atlos_csv_export.py`
-- UI: `pages/2_Incidents.py` — section **Export for Atlos (manual bulk import)**
-- Tests: `tests/test_atlos_csv_export.py`
-
-## API export (disabled)
-
-Automatic export via Atlos API v2 (`POST /api/v2/incidents/new`) is implemented in `core/incidents/atlos_export.py` but **not exposed** in the Incidents UI. To re-enable later, set `ATLOS_API_EXPORT_ENABLED = True` in `pages/2_Incidents.py` and configure `ATLOS_API_TOKEN` / Neo4j Atlos settings.
-
-For a local Atlos dev stack (optional, not required for cloud import), see [Docker: full stack with Atlos](../docker/full-stack-with-atlos.md).
+- API client: `core/incidents/atlos_export.py`
+- UI: `pages/2_Incidents.py` — **Export to Atlos (API)**
+- Tests: `tests/test_atlos_export.py`
 
 ## Troubleshooting
 
 | Problem | What to do |
 |---------|------------|
-| CSV empty | Widen date range; run pipeline; ensure incidents have lat/lon |
-| Bulk import fails on headers | Use exact lowercase: `status`, `description`, `sensitive` |
-| Geolocation not imported | Match column name to your Atlos project attributes in Manage |
-| `sensitive` parse error | Quote values that contain commas (Groupint CSV uses standard quoting) |
+| Token empty | Set `ATLOS_API_TOKEN` or save token in UI |
+| HTTP 401/403 | Regenerate token on Atlos; check project permissions |
+| Connection failed (local) | Run `./scripts/up-full.sh`; use `http://atlos:4000` from Streamlit container |
+| Export failed for row | Open **Export errors** expander; check description length and coordinates |
 
 See also [Troubleshooting](../troubleshooting.md).
 
 ## Related
 
 - [Incidents overview](overview.md)
-- [Incident map filters](overview.md#typical-workflow)

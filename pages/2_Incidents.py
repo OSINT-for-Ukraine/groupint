@@ -9,13 +9,17 @@ from datetime import date, datetime, timedelta, timezone
 import folium
 import streamlit as st
 
-from core.incidents.atlos_csv_export import (
-    DEFAULT_SENSITIVE as ATLOS_DEFAULT_SENSITIVE,
-    DEFAULT_STATUS as ATLOS_DEFAULT_STATUS,
-    incidents_to_atlos_csv_str,
+from core.incidents.atlos_export import (
+    atlos_config,
+    export_incidents_batch,
+    normalize_base_url,
+    test_atlos_connection,
 )
 from core.incidents.config import (
+    apply_atlos_secrets,
     apply_incidents_secrets,
+    default_atlos_api_token,
+    default_atlos_base_url,
     llm_provider,
     poll_interval_sec,
 )
@@ -442,164 +446,107 @@ if incidents:
     )
 
     st.divider()
-    st.subheader("Export for Atlos (manual bulk import)")
-    st.caption(
-        "Download a CSV for **Atlos cloud** bulk import. Required columns: "
-        "`status`, `description`, `sensitive` (lowercase). "
-        "Optional `geolocation` as `latitude,longitude` — confirm column names in your "
-        "project’s **Manage → Bulk import** docs if import fails."
-    )
-    atlos_status = st.selectbox(
-        "Default status column",
-        ["To Do", "Unclaimed", "In Progress"],
-        index=0,
-        key="atlos_csv_status",
-    )
-    atlos_sensitive = st.text_input(
-        "Default sensitive column",
-        value=ATLOS_DEFAULT_SENSITIVE,
-        key="atlos_csv_sensitive",
-    )
-    atlos_csv = incidents_to_atlos_csv_str(
-        incidents,
-        status=atlos_status,
-        sensitive=atlos_sensitive.strip() or ATLOS_DEFAULT_SENSITIVE,
-        require_coordinates=True,
-    )
-    st.download_button(
-        "Download CSV for Atlos bulk import",
-        data=atlos_csv,
-        file_name="incidents-atlos-import.csv",
-        mime="text/csv",
-        type="primary",
-        key="btn_atlos_csv_download",
-    )
-    st.markdown(
-        """
-1. Open your project on [platform.atlos.org](https://platform.atlos.org).
-2. Go to **Manage** → scroll to **Bulk import**.
-3. **Upload a file** → review → **Publish to Atlos**.
+    apply_atlos_secrets()
+    st.subheader("Export to Atlos (API)")
+    st.caption("Push filtered incidents to Atlos via API v2.")
+    monitor_cfg = GraphManager.get_incident_monitor_config()
+    env_base = default_atlos_base_url()
+    env_token = default_atlos_api_token()
+    saved_base = monitor_cfg.get("atlos_base_url") or env_base
+    saved_token = monitor_cfg.get("atlos_api_token") or env_token
 
-See `docs/incidents/atlos-export.md` in the repository for column details.
-        """
+    preset = st.selectbox(
+        "URL preset",
+        ["Local Docker (atlos:4000)", "Cloud (platform.atlos.org)", "Custom"],
+        key="atlos_url_preset",
     )
+    preset_urls = {
+        "Local Docker (atlos:4000)": "http://atlos:4000",
+        "Cloud (platform.atlos.org)": "https://platform.atlos.org",
+    }
+    default_url = preset_urls.get(preset, saved_base)
 
-    # API export disabled — use CSV bulk import to cloud Atlos.
-    ATLOS_API_EXPORT_ENABLED = False
-    if ATLOS_API_EXPORT_ENABLED:
-        from core.incidents.atlos_export import (
-            atlos_config,
-            export_incidents_batch,
-            normalize_base_url,
-            test_atlos_connection,
+    ac1, ac2 = st.columns(2)
+    with ac1:
+        atlos_url_input = st.text_input(
+            "Atlos API base URL",
+            value=default_url if preset != "Custom" else saved_base,
+            key="atlos_base_url_input",
         )
-        from core.incidents.config import (
-            apply_atlos_secrets,
-            default_atlos_api_token,
-            default_atlos_base_url,
+    with ac2:
+        atlos_token_input = st.text_input(
+            "Atlos API token",
+            value=saved_token,
+            type="password",
+            key="atlos_token_input",
         )
 
-        apply_atlos_secrets()
-        st.subheader("Export to Atlos (API)")
-        st.caption("Push filtered incidents to Atlos via API v2.")
-        monitor_cfg = GraphManager.get_incident_monitor_config()
-        env_base = default_atlos_base_url()
-        env_token = default_atlos_api_token()
-        saved_base = monitor_cfg.get("atlos_base_url") or env_base
-        saved_token = monitor_cfg.get("atlos_api_token") or env_token
-
-        preset = st.selectbox(
-            "URL preset",
-            ["Local Docker (atlos:4000)", "Cloud (platform.atlos.org)", "Custom"],
-            key="atlos_url_preset",
-        )
-        preset_urls = {
-            "Local Docker (atlos:4000)": "http://atlos:4000",
-            "Cloud (platform.atlos.org)": "https://platform.atlos.org",
-        }
-        default_url = preset_urls.get(preset, saved_base)
-
-        ac1, ac2 = st.columns(2)
-        with ac1:
-            atlos_url_input = st.text_input(
-                "Atlos API base URL",
-                value=default_url if preset != "Custom" else saved_base,
-                key="atlos_base_url_input",
+    skip_exported = st.checkbox(
+        "Skip incidents already exported to Atlos",
+        value=True,
+        key="atlos_skip_exported",
+    )
+    sc1, sc2, sc3 = st.columns(3)
+    with sc1:
+        if st.button("Save Atlos settings", key="btn_save_atlos"):
+            GraphManager.upsert_incident_monitor_config(
+                atlos_base_url=normalize_base_url(atlos_url_input),
+                atlos_api_token=atlos_token_input.strip(),
             )
-        with ac2:
-            atlos_token_input = st.text_input(
-                "Atlos API token",
-                value=saved_token,
-                type="password",
-                key="atlos_token_input",
+            st.success("Atlos settings saved.")
+            st.rerun()
+    with sc2:
+        if st.button("Reset to .env defaults", key="btn_atlos_reset"):
+            GraphManager.upsert_incident_monitor_config(
+                atlos_base_url=env_base,
+                atlos_api_token=env_token,
             )
-
-        skip_exported = st.checkbox(
-            "Skip incidents already exported to Atlos",
-            value=True,
-            key="atlos_skip_exported",
-        )
-        sc1, sc2, sc3 = st.columns(3)
-        with sc1:
-            if st.button("Save Atlos settings", key="btn_save_atlos"):
-                GraphManager.upsert_incident_monitor_config(
-                    atlos_base_url=normalize_base_url(atlos_url_input),
-                    atlos_api_token=atlos_token_input.strip(),
-                )
-                st.success("Atlos settings saved.")
-                st.rerun()
-        with sc2:
-            if st.button("Reset to .env defaults", key="btn_atlos_reset"):
-                GraphManager.upsert_incident_monitor_config(
-                    atlos_base_url=env_base,
-                    atlos_api_token=env_token,
-                )
-                st.rerun()
-        with sc3:
-            if st.button("Test Atlos connection", key="btn_atlos_test"):
-                cfg = atlos_config()
-                ok, msg = test_atlos_connection(
-                    atlos_url_input or cfg["base_url"],
-                    atlos_token_input or cfg["api_token"],
-                )
-                if ok:
-                    st.success(msg)
-                else:
-                    st.error(msg)
-
-        if st.button(
-            "Export filtered incidents to Atlos",
-            type="primary",
-            key="btn_atlos_export",
-        ):
+            st.rerun()
+    with sc3:
+        if st.button("Test Atlos connection", key="btn_atlos_test"):
             cfg = atlos_config()
-            base = normalize_base_url(atlos_url_input) or cfg["base_url"]
-            token = (atlos_token_input or cfg["api_token"]).strip()
-            if not token:
-                st.error("Set an Atlos API token before exporting.")
+            ok, msg = test_atlos_connection(
+                atlos_url_input or cfg["base_url"],
+                atlos_token_input or cfg["api_token"],
+            )
+            if ok:
+                st.success(msg)
             else:
-                to_export = GraphManager.list_incidents_for_export(
-                    date_from=date_from_s,
-                    date_to=date_to_s,
-                    category=cat,
+                st.error(msg)
+
+    if st.button(
+        "Export filtered incidents to Atlos",
+        type="primary",
+        key="btn_atlos_export",
+    ):
+        cfg = atlos_config()
+        base = normalize_base_url(atlos_url_input) or cfg["base_url"]
+        token = (atlos_token_input or cfg["api_token"]).strip()
+        if not token:
+            st.error("Set an Atlos API token before exporting.")
+        else:
+            to_export = GraphManager.list_incidents_for_export(
+                date_from=date_from_s,
+                date_to=date_to_s,
+                category=cat,
+                skip_exported=skip_exported,
+            )
+            with st.spinner(f"Exporting {len(to_export)} incident(s)…"):
+                result = export_incidents_batch(
+                    to_export,
+                    base_url=base,
+                    api_token=token,
                     skip_exported=skip_exported,
                 )
-                with st.spinner(f"Exporting {len(to_export)} incident(s)…"):
-                    result = export_incidents_batch(
-                        to_export,
-                        base_url=base,
-                        api_token=token,
-                        skip_exported=skip_exported,
-                    )
-                st.success(
-                    f"Created **{result['created']}**, skipped **{result['skipped']}**, "
-                    f"failed **{result['failed']}**"
-                )
-                if result.get("errors"):
-                    with st.expander("Export errors"):
-                        for err in result["errors"][:50]:
-                            st.write(err)
-                st.rerun()
+            st.success(
+                f"Created **{result['created']}**, skipped **{result['skipped']}**, "
+                f"failed **{result['failed']}**"
+            )
+            if result.get("errors"):
+                with st.expander("Export errors"):
+                    for err in result["errors"][:50]:
+                        st.write(err)
+            st.rerun()
 else:
     st.info("No geocoded incidents in this range. Run the pipeline after fetching messages.")
 

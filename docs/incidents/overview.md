@@ -58,7 +58,7 @@ Without LLM API keys, ingest still runs; LLM stages are skipped quietly.
 3. Configure [keywords and scheduler](keywords-and-scheduler.md).
 4. **Fetch watchlist now** or enable automatic scheduler.
 5. **Run pipeline now** (or let worker run pipeline after fetch).
-6. View the **Incident map**; export GeoJSON, JSON, CSV; optional [Atlos CSV bulk import](atlos-export.md).
+6. View the **Incident map**; export GeoJSON, JSON, CSV; optional [Atlos API export](atlos-export.md).
 7. **Generate intelligence report** for a text summary.
 
 ## Configuration

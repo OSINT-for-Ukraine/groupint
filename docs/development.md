@@ -35,7 +35,7 @@ Ensure Neo4j is reachable and `NEO4J_URI` is set in `.env`.
 poetry run pytest
 ```
 
-Example incident tests: `tests/test_atlos_csv_export.py`, `tests/test_atlos_export.py`, `tests/test_watchlist_channels.py`.
+Example incident tests: `tests/test_atlos_export.py`, `tests/test_watchlist_channels.py`.
 
 ## Docker during development
 
